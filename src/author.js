@@ -181,5 +181,5 @@ async function sales(env,req,exporting=false) {
   const lines=[['Reference','Buyer name','Email','Phone','Country','Books','Amount','Currency','Status','Mode','Payment provider','Date and time (UTC)','Paid date and time (UTC)','Payment detail','Last checked (UTC)']];
   const date=value=>value?new Date(value*1000).toLocaleString('en-GB',{timeZone:'UTC',hour12:false}):'';
   for(const row of rows)lines.push([row.ref,row.name,row.email,row.phone,row.country,row.books.join('; '),row.amount,row.currency,row.status,row.mode,row.provider,date(row.created_at),date(row.paid_at),row.payment_message,date(row.last_check_at)]);
-  return new Response('\ufeff'+lines.map(line=>line.map(csvCell).join(',')).join('\r\n'),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="Bookshop-sales.csv"','Cache-Control':'private, no-store'}});
+  return new Response('\ufeff'+lines.map(line=>line.map(csvCell).join(',')).join('\r\n'),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="Revival-Fire-Forum-sales.csv"','Cache-Control':'private, no-store'}});
 }

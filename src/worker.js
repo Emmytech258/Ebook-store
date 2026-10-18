@@ -61,14 +61,14 @@ async function handle(env,req,ctx) {
     if(action==='review')return json(await reviews(env,data));
     if(action==='contact'){
       const name=String(data.name||'').trim(),email=String(data.email||'').trim(),message=String(data.message||'').trim();assert(!data.website&&data.consent===true&&name.length>=2&&name.length<=120&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=200&&message.length>=10&&message.length<=5000,400,'Please check your name, email address and message.');
-      const s=await settings(env);await mail(env,s,s.support_email,'Bookshop support request','<p>From: '+escapeHtml(name)+' ('+escapeHtml(email)+')</p><p>Reference: '+escapeHtml(String(data.reference||'').slice(0,120))+'</p><p>'+escapeHtml(message).replace(/\n/g,'<br>')+'</p>','contact/'+crypto.randomUUID());return json({ok:true});
+      const s=await settings(env);await mail(env,s,s.support_email,BRAND.store_name+' support request','<p>From: '+escapeHtml(name)+' ('+escapeHtml(email)+')</p><p>Reference: '+escapeHtml(String(data.reference||'').slice(0,120))+'</p><p>'+escapeHtml(message).replace(/\n/g,'<br>')+'</p>','contact/'+crypto.randomUUID());return json({ok:true});
     }
     throw new HttpError(404,'We could not find that action.');
   }
   if(relative==='/author'||relative==='/author/'){const asset=await env.ASSETS.fetch(new Request(url.origin+'/author.html',req));return new HTMLRewriter().on('[data-store-name]',{element(el){el.setInnerContent(escapeHtml(BRAND.store_name));}}).on('title',{element(el){el.setInnerContent('Author Portal | '+escapeHtml(BRAND.store_name));}}).on('img',{element(el){el.setAttribute('src',BRAND.logo_url);el.setAttribute('alt',BRAND.store_name);}}).transform(asset);}
   const slug=decodeURIComponent(relative.replace(/^\//,'').replace(/\/$/,''));
   const config={page:'home',book:null,preview:false,base:BASE,api:BASE+'/api',assets:BASE+'/assets/',logo:BRAND.logo_url,store_name:BRAND.store_name,tagline:BRAND.tagline,homepage_title:BRAND.homepage_title,homepage_intro:BRAND.homepage_intro,catalog_intro:BRAND.catalog_intro,support_email:BRAND.support_email,books:SEED_BOOKS};
-  let title=BRAND.store_name+' | The Bookshop',description=BRAND.tagline,image=BRAND.logo_url;
+  let title=BRAND.store_name+' | Digital Books',description=BRAND.tagline,image=BRAND.logo_url;
   if(['checkout','download','contact','privacy'].includes(slug)){config.page=slug;title=slug[0].toUpperCase()+slug.slice(1)+' | '+BRAND.store_name;}
   else if(slug){
     const row=await env.DB.prepare('SELECT * FROM books WHERE slug=? AND active=1').bind(slug).first();
@@ -88,7 +88,7 @@ export default {
         if(['GET','HEAD'].includes(req.method)){url.protocol='https:';response=Response.redirect(url.href,308);}
         else throw new HttpError(400,'Use the secure HTTPS website to submit this form.');
       }else response=await handle(env,req,ctx);
-    }catch(error){response=json({message:error.status?error.message:'The store could not complete that request. Please try again.',...(error.data?{data:error.data}:{})},error.status||500);if(!error.status)console.error('Bookshop request failed:',error.name);}
+    }catch(error){response=json({message:error.status?error.message:'The store could not complete that request. Please try again.',...(error.data?{data:error.data}:{})},error.status||500);if(!error.status)console.error('Store request failed:',error.name);}
     const out=new Response(response.body,response);for(const [key,value] of Object.entries(headers))out.headers.set(key,value);
     if(url.protocol==='https:'&&!local)out.headers.set('Strict-Transport-Security','max-age=31536000');
     const privatePath=/^\/books\/(?:author(?:\/|$)|api\/admin(?:\/|$)|download(?:\/|$))/.test(url.pathname);
@@ -102,5 +102,5 @@ export default {
     }
     return out;
   },
-  async scheduled(event,env,ctx){ctx.waitUntil(initialize(env).then(()=>scheduled(env)).catch(()=>console.error('Bookshop scheduled task needs attention.')));}
+  async scheduled(event,env,ctx){ctx.waitUntil(initialize(env).then(()=>scheduled(env)).catch(()=>console.error('Store scheduled task needs attention.')));}
 };
