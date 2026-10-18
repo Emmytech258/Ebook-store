@@ -1,0 +1,12 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS books (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, data TEXT NOT NULL, price_ngn REAL NOT NULL CHECK(price_ngn > 0), pdf_key TEXT, active INTEGER NOT NULL DEFAULT 1, position INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS slug_aliases (slug TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id));
+CREATE TABLE IF NOT EXISTS orders (ref TEXT PRIMARY KEY, key_hash TEXT NOT NULL, key_enc TEXT NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT, country TEXT, amount REAL NOT NULL, currency TEXT NOT NULL, items TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', mode TEXT NOT NULL, checkout_url TEXT, provider_id TEXT UNIQUE, created_at INTEGER NOT NULL, paid_at INTEGER, email_sent_at INTEGER, reminder_sent_at INTEGER, mail_lock INTEGER NOT NULL DEFAULT 0, reminder_lock INTEGER NOT NULL DEFAULT 0, last_check_at INTEGER, mail_error TEXT);
+CREATE INDEX IF NOT EXISTS orders_created_idx ON orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS orders_status_idx ON orders(status, created_at);
+CREATE TABLE IF NOT EXISTS downloads (order_ref TEXT NOT NULL REFERENCES orders(ref), book_id TEXT NOT NULL, started_at INTEGER NOT NULL, PRIMARY KEY(order_ref,book_id));
+CREATE TABLE IF NOT EXISTS reviews (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, buyer_email TEXT NOT NULL, name TEXT NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), text TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, hidden INTEGER NOT NULL DEFAULT 0, UNIQUE(book_id,buyer_email));
+CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);

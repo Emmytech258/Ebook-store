@@ -1,0 +1,117 @@
+I want you to help me finish and launch my own independent ebook store using the attached starter or the repository I give you. I have not completed the business or account setup yet. Act as my implementation partner and guide me from this starter to a tested store on my own domain.
+
+Read README.md, CLAUDE.md, CLOUDFLARE-SETUP.md, SECURITY.md, SETUP_STATUS.md, store.config.json and the source before changing anything. Keep the existing useful features and security controls. Do not rebuild the project from scratch without a clear reason.
+
+HOW TO WORK WITH ME
+
+Use simple English and give short progress updates as you complete stages. Keep working on tasks that do not need my answer. Ask focused batches of questions when my choices or account actions matter. Do not repeatedly ask me to approve ordinary reversible edits that I already requested.
+
+First check which Claude interface and tools I am using. Confirm whether you can read and write my repository, run commands, use a browser and deploy. A GitHub profile URL is not a repository URL. Ask for the exact repository if it is missing. If your GitHub integration is read only, explain the limit and guide a usable Claude Code, local file or GitHub upload workflow. Do not claim you pushed files or deployed anything without a successful result.
+
+Maintain SETUP_STATUS.md with completed steps, evidence, pending choices and next actions. Keep that file free of secrets and buyer information. If a task pauses, leave enough non-secret context for another session to continue.
+
+Use only my own business details, files, domains, accounts and resources. Keep the production catalog empty until I supply my content. Do not publish fictional books, fake reviews, invented sales counts or test fixtures. Do not copy another seller's customer data or cloud state. Initialize a new repository history from these clean files when I create my own repository.
+
+Do not ask me to paste passwords, private API keys, authentication codes, recovery codes or payment credentials into this chat. Ask whether I have each required item, then show me exactly where to enter it in my own secure dashboard, build secrets, Worker secrets or authenticated owner portal. Never put secret values into source, public JavaScript, commit messages, issues, logs or screenshots. If I accidentally expose one, help me replace it through the provider's secure process.
+
+FIRST INTAKE
+
+Start with one compact request for the public facts and choices below. Let me answer what I know and record the rest as pending.
+
+1. My business or publishing name, seller country and target reader countries. Ask whether I have a registered business name and which public business contact details I want to display. Do not invent registration claims or addresses.
+2. My exact domain, registrar and Cloudflare account readiness. Ask whether I already own the domain, whether another website or mailbox uses it, and whether I want a fresh hostname or to keep an existing homepage. The current app uses /books/ and /books/author/. Ask before changing that path.
+3. My own GitHub repository URL, intended production branch and whether I have granted the needed access. Ask which Claude interface I will use for implementation. Help me create and populate a new repository if needed.
+4. My public support email, desired sending address, display name and inbox for receiving replies. Ask whether I want email forwarding or a full mailbox and whether that domain already receives email.
+5. My chosen payment provider or providers, account country, settlement needs, approved collection currencies and approved methods. Ask what my actual account can collect, not just what the provider advertises. Ask whether test and live credentials and webhook settings are ready, without collecting their values in chat.
+6. My base pricing currency and preferred reporting timezone. The current source uses NGN as the base through price_ngn and uses UTC for reports and the two daily rate windows. If I need something else, assess and implement the full calculation and storage changes instead of changing labels alone.
+7. My books and assets. For each title I will provide the title, author, short introduction, full description, category, price, cover and final PDF. Ask which book to feature, any related books, a suitable public slug and any genuine earlier sales count. Use zero if I do not provide a real starting count. Tell me which uploads I can safely add later without enabling payment for unfinished titles.
+8. My preferred logo, colors and readable font style. The starter already has responsive layouts and light, dark and system themes. Keep the current design unless I request a change.
+9. My refund, cancellation, delivery and support rules, and the markets that affect them. Ask before inventing response deadlines or business promises. Draft the actual notices for my business and preserve consumer rights that apply. Ask whether I want unfinished-checkout reminder emails. They start disabled.
+10. Whether I want Meta Pixel, Conversions API, both or neither. Ask whether I own a suitable Meta business account, ad account and Pixel or Dataset. A Pixel/Dataset ID is a public identifier, but keep the CAPI token private. A test event code is optional for diagnostics. Do not require a Facebook app secret, social posting permissions or Facebook login just to add ordinary Pixel and CAPI tracking.
+
+After intake, explain the selected path, the parts you can complete now and the exact owner actions still needed. Work through the phases below without asking me to repeat details already supplied.
+
+PHASE 1. OWN REPOSITORY AND IDENTITY
+
+Confirm this repository belongs to me and that you can perform the actions you claim. Keep package.json at the repository root unless I explicitly choose a subfolder. Keep the npm lockfile and its integrity values intact. Use npm ci for reproducible installation.
+
+Replace the generic public values in store.config.json with my name, copy, support address, actual domain, resource names and logo path. Run npm run configure to generate my own Wrangler values. Update visible branding in the storefront, owner portal, email sender and receipt body, payment description, authenticator label, metadata and social previews. Verify that no unrelated identity or tracking target appears anywhere.
+
+Do not copy a Git history, database, encryption key or customer file from a different store. The production SEED_BOOKS list must stay empty until I provide my books. Deploy src/worker.js, never tests/harness-worker.js. Test fixtures belong only in tests.
+
+PHASE 2. MY CLOUDFLARE, DOMAIN AND STORAGE
+
+Check current official Cloudflare documentation and guide the actual dashboard labels I see. Use my own Cloudflare account and its assigned nameservers. If I have not created an account or purchased a domain, guide me through those owner actions and current costs before any purchase or paid service activation.
+
+Inventory existing web and email DNS records before changing nameservers. Preserve valid receiving mail and sending verification records. Do not delete MX, SPF, DKIM or DMARC records by guessing. Use only my zone's assigned nameservers and coordinate DNSSEC correctly with my registrar.
+
+For a fresh hostname, use a Worker Custom Domain and the custom-domain deployment mode. The root can redirect to /books/. For an existing website on the same hostname, use path-route for /books/* and /books with the correct zone and proxied DNS. Check for hostname conflicts before changing an existing site. Keep the public store on my own domain, not a workers.dev address.
+
+Create or select a new D1 database and private R2 bucket that belong to me and have distinct names. Bind them as DB and FILES. Bind public assets as ASSETS. Set PUBLIC_ORIGIN to my HTTPS origin without /books. Apply the migrations in order. Check R2 requirements and current billing before enabling it.
+
+Generate a new private CONFIG_KEY and retain a secure backup. It protects encrypted provider keys, private download links and owner security data. Once the database holds encrypted values, preserve that key. Do not rotate it casually. Put AUTHOR_INITIAL_PASSWORD in my private first-deployment build settings, using at least 15 characters. AUTHOR_INITIAL_USERNAME can set my initial username; otherwise it defaults to owner. Guide me to change the password in the portal and enable authenticator login, then retain recovery codes privately.
+
+Use Workers Builds for this Worker application rather than static-only Pages hosting. Confirm the repository, production branch and application root. Start with npm run check as the build command and npm run deploy as the deploy command. Verify the build token's current Worker, route, D1, R2 and any artifact permissions. Do not assume a missing menu means the underlying capability is unavailable.
+
+Before deploying, verify the authenticated account and resource names belong to me. Run the local checks and tests first. After deploying, confirm this actual Worker's successful deployment and HTTPS domain. Do not use an unrelated project's successful build as evidence.
+
+PHASE 3. MY BOOKS AND PUBLIC PAGES
+
+Add only the books, covers, descriptions and prices I supply or approve. Keep books without their own private PDF unavailable for payment. Compress uploaded covers using the existing image flow. Keep PDFs in private storage and out of the public repository and assets directory.
+
+Confirm individual public slugs, featured book selection, related-book offers, catalog search and pagination. Keep each book's earlier sales count at zero unless I provide a real number. Add verified live purchases once per book and exclude test purchases.
+
+Keep readable text and responsive layouts for phones, tablets and desktops. Preserve the same-page checkout with name and email. Do not add a phone field on my site unless I explicitly need one. A provider may request the information its local payment method needs inside its own checkout.
+
+PHASE 4. MY PAYMENT PROVIDERS
+
+The included code supports Flutterwave v3 Standard for NGN and Bachs for GHS, KES, MWK, RWF, TZS, UGX, XAF, XOF and ZMW mobile money. Optional Bachs USD card code exists, but USD is not enabled in the default currency list. Confirm that my own account has approval before enabling any method. Paystack, Stripe or another gateway requires a real adapter and tests. Do not pretend that pasting an unsupported key completes an integration.
+
+Use current official provider documentation and preserve test/live separation. Store private gateway keys through the secure owner portal. Restrict credentials to collection and verification. Payout or transfer permissions are not needed merely to sell books.
+
+Show my local currency where supported and preserve the visitor's manual choice across the page and checkout. Send the server-calculated, reviewed total to the chosen provider and freeze it on that order. Keep twice-daily exchange-rate windows. Do not change prices every few seconds or invent rates for an unavailable currency.
+
+Create and test these destinations on my own HTTPS domain:
+Flutterwave: /books/api/webhook
+Bachs sandbox: /books/api/bachs/webhook/test
+Bachs live: /books/api/bachs/webhook/live
+
+For Bachs, subscribe to checkout.completed, collection.succeeded, collection.failed, collection.underpaid and checkout.expired. Save the matching destination signing secret for each environment. Preserve raw-body signature checks, timestamp validation, event deduplication and the authenticated checkout read. Fulfil only when the saved checkout, reference, full amount, currency, environment and charge state verify and the signed success proof matches. Do not reject a fully verified payment merely because optional payment-method metadata is absent or differently labelled.
+
+Flutterwave currently uses one saved v3 verif-hash webhook_secret. If my dashboard requires different test and live hashes, explain a compatible setup or implement separate fields and matching verification. Do not claim this template already has two independent Flutterwave webhook-secret fields.
+
+A success redirect, screenshot or browser callback must never mark an order paid by itself. Wrong references, amounts, currencies, unsigned notifications, partial payments and ambiguous accepted states must not release PDFs. Explain failed or expired checkouts clearly. Do not ask a buyer who may already have paid to start another full payment before checking the saved transaction.
+
+Use sandbox tests first. For any real charge or payout, explain what will happen and obtain my specific authorization. After an authorized live test, reconcile the saved order with the provider's transaction and settlement record. Sales on my website do not replace the provider's own balance or withdrawal records. Do not build payout automation unless I separately request it.
+
+PHASE 5. MY RESEND AND SUPPORT EMAIL
+
+Use my own Resend account and verify my sending domain. Guide the exact DNS records Resend provides. If I want forwarding, configure my own receiving route and verified destination inbox. Keep sending verification and receiving mail records compatible. Do not overwrite an existing mailbox setup without checking it.
+
+Have me create a restricted sending API key and enter it in the private portal. Set my verified from_email, from_name and support_email. Test a real email, replies and spam placement. Then complete a sandbox purchase and verify that its receipt contains working private PDF links and the ZIP link for multiple books. A generic test email alone does not prove purchase delivery works.
+
+Keep reminders off unless I choose them and the applicable notice or consent rules permit them. If enabled, preserve the single reminder, verify payment first and avoid reminders for known failed, expired, partial or completed transactions.
+
+PHASE 6. MY OPTIONAL META PIXEL AND CAPI
+
+If I decline tracking, keep Pixel and CAPI disabled. If I choose them, guide my own Meta business and Events Manager setup using current official documentation. Confirm that the Pixel/Dataset ID matches the asset I intend to use and that my account can manage it. Ask me to enter the CAPI token privately. Use an optional Test Event Code only for diagnostics and keep normal live events separate from tests.
+
+Confirm PageView, ViewContent, AddToCart, InitiateCheckout and verified Purchase events. Reuse matching event IDs for browser/server deduplication. Send Purchase only after a verified live payment. Keep gateway keys, purchase keys and private download URLs out of tracking. Test payments must not become live purchase metrics. Check the hashed customer fields and actual event diagnostics without exposing the token.
+
+Review tracking consent and privacy requirements for my business and customers before enabling advertising scripts. Add consent controls if my markets require them. Do not assume this starter already satisfies every jurisdiction's rules.
+
+PHASE 7. POLICIES, SECURITY AND LAUNCH
+
+Write and publish privacy, terms, cancellation, refund and digital delivery notices using my actual business facts and decisions. Add working policy links where customers need them. Preserve mandatory consumer rights and avoid promises I have not accepted. Use a real support route.
+
+Check login, authenticator enrollment, recovery, password changes, sensitive settings confirmation, CSRF, rate limits, private pages and secret masking. Verify that unsigned or unpaid requests cannot download a PDF, a changed book ID cannot get a different title, expired or modified signatures fail and the R2 bucket has no public bypass. Preserve strict access checks on test orders even after switching the shop to live.
+
+Run npm run check, npm test and npm run build. Keep or add meaningful regressions for any changes. Check the real website in a browser when available, including small phone widths, the checkout popup, currency switching, large covers, the owner portal and paid download pages. If browser or external account access is unavailable, state the remaining check and give me a focused manual step instead of pretending it passed.
+
+Confirm a successful payment produces one paid order, one receipt, working PDF/ZIP access, one sales-count addition and one deduplicated Meta Purchase event if tracking is enabled. Replay a notification and make sure it does not duplicate these effects. Confirm failed and partial payments do not provide books. Check provider-side payment records as well as website records.
+
+Verify the cron, receipt retries, payment rechecks, exchange-rate windows, HTTPS and the privacy of files and secrets. Confirm my approved support and refund process, provider payout destination and account notifications through my own dashboards. Do not request payout API authority simply to inspect payments.
+
+Only switch to live mode after the required setup and checks pass. Finish with my actual website and owner portal URLs, the commit and deployment result, completed tests, remaining manual checks, my support details, how I add books and how I inspect sales. Describe any unimplemented provider or feature plainly. Keep SETUP_STATUS.md accurate so I can continue without losing progress.
+
+Begin now by inspecting the files and sending the compact intake questions. Do not ask for private key values in chat.
