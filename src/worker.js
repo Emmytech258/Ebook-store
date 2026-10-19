@@ -69,7 +69,7 @@ async function handle(env,req,ctx) {
   const slug=decodeURIComponent(relative.replace(/^\//,'').replace(/\/$/,''));
   const config={page:'home',book:null,preview:false,base:BASE,api:BASE+'/api',assets:BASE+'/assets/',logo:BRAND.logo_url,store_name:BRAND.store_name,tagline:BRAND.tagline,homepage_title:BRAND.homepage_title,homepage_intro:BRAND.homepage_intro,catalog_intro:BRAND.catalog_intro,support_email:BRAND.support_email,books:SEED_BOOKS};
   let title=BRAND.store_name+' | Digital Books',description=BRAND.tagline,image=BRAND.logo_url;
-  if(['checkout','download','contact','privacy'].includes(slug)){config.page=slug;title=slug[0].toUpperCase()+slug.slice(1)+' | '+BRAND.store_name;}
+  if(['checkout','download','contact','privacy','refunds','delivery','terms'].includes(slug)){config.page=slug;title=({refunds:'Refunds and cancellation',delivery:'Delivery',terms:'Terms of use'})[slug]||slug[0].toUpperCase()+slug.slice(1);title+=' | '+BRAND.store_name;}
   else if(slug){
     const row=await env.DB.prepare('SELECT * FROM books WHERE slug=? AND active=1').bind(slug).first();
     if(!row){const alias=await env.DB.prepare('SELECT b.slug FROM slug_aliases a JOIN books b ON b.id=a.book_id WHERE a.slug=? AND b.active=1').bind(slug).first();if(alias)return Response.redirect(url.origin+BASE+'/'+alias.slug+'/'+url.search,301);return new Response('This book is no longer available. Browse the bookshop at /books/.',{status:404});}

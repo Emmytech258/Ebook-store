@@ -26,7 +26,7 @@ async function insertStatement(env,s,payload,orderRef){
   return env.DB.prepare(sql).bind(...args);
 }
 export async function purchaseStatement(env,s,order,time){
-  if(order.mode!=='live'||!metaActive(s))return null;
+  if(order.mode!=='live'||!metaActive(s)||!order.meta_user_data)return null;
   let user={};try{if(order.meta_user_data)user=JSON.parse(await decrypt(env,order.meta_user_data));}catch{}
   user.em=[await sha256Hex(order.email.trim().toLowerCase())];
   const items=JSON.parse(order.items),custom={value:order.amount,currency:order.currency,content_type:'product',content_ids:items.map(i=>i.id),contents:items.map(i=>({id:i.id,quantity:1,item_price:i.amount})),num_items:items.length};

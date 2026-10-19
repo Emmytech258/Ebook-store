@@ -46,7 +46,7 @@ async function makeOrder(ids=books.slice(0,2).map(b=>b.id),name='Test Buyer',cou
  const currency={NG:'NGN',GH:'GHS',KE:'KES',UG:'UGX'}[country]||'USD';
  const fresh=(await api('catalog')).data;nonce=fresh.nonce;
  const expected_amount=ids.reduce((n,id)=>n+fresh.books.find(b=>b.id===id).prices[currency],0);
- const {response,data}=await api('checkout',{method:'POST',publicPost:true,headers:options.headers||{},data:{name,email:'buyer@example.com',meta_context:options.meta_context||{},country,books:ids,expected_amount:Math.round(expected_amount*100)/100,consent:true}});
+ const {response,data}=await api('checkout',{method:'POST',publicPost:true,headers:options.headers||{},data:{name,email:'buyer@example.com',meta_context:options.meta_context||{},meta_consent:options.meta_consent!==false,country,books:ids,expected_amount:Math.round(expected_amount*100)/100,consent:true}});
  assert.equal(response.status,200,JSON.stringify(data));
  const p=payments.get(data.ref),q=new URL(p.redirect_url).searchParams;
  assert.equal(new URL(p.redirect_url).origin,origin);assert.equal(new URL(p.redirect_url).pathname,'/books/download/');
@@ -326,4 +326,12 @@ test('Unpaid orders, forged callbacks, changed links and direct storage paths ne
  const privateKey=JSON.parse(stored.items)[0].pdf_key;
  for(const path of ['/books/'+privateKey,'/books/assets/'+privateKey,'/books/assets/free-book.pdf','/books/api/cover/'+privateKey,'/books/.env','/books/.git/config'])assert.ok((await mf.dispatchFetch(origin+path)).status>=400,path);
  const original=await mf.dispatchFetch(paidLink.href);assert.equal(original.status,200);assert.match(await original.text(),/^%PDF-/);
+});
+
+test('A buyer who declined tracking gets the books and no Meta purchase event is queued or sent',async()=>{
+ const order=await makeOrder([books[0].id],'Private Buyer','NG',{meta_consent:false,meta_context:{fbp:'fb.1.1791650000000.987654321'}});paid(order);
+ const r=await verify(order);assert.equal(r.data.status,'paid');assert.ok(r.data.books[0].download_url);
+ await call('/__test_cron');
+ assert.ok(!(await db.prepare('SELECT id FROM meta_events WHERE id=?').bind('purchase-'+order.ref).first()));
+ assert.equal(metaRequests.filter(x=>x.data[0].event_id==='purchase-'+order.ref).length,0);
 });

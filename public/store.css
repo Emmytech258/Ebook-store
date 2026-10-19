@@ -147,3 +147,10 @@ body.bs-checkout-open{overflow:hidden}
  #bs-page .bs-country{padding:9px 20px 9px 9px;min-width:80px;max-width:100px}
  #bs-page .bs-nav-links .bs-country{margin-left:auto}
 }
+
+#bs-page .bs-consent-banner{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:60;width:min(720px,calc(100% - 32px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px #00000040;padding:18px 20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+#bs-page .bs-consent-banner p{flex:1 1 320px;font-size:15px;line-height:1.55}
+#bs-page .bs-consent-actions{display:flex;gap:10px;flex-wrap:wrap}
+#bs-page .bs-link-button{background:none;border:0;padding:0;color:inherit;text-decoration:underline;text-underline-offset:3px;font-size:13px}
+#bs-page .bs-reading-width ul{padding-left:21px;margin:0 0 17px;color:var(--muted);font-size:15px}
+#bs-page .bs-reading-width li{margin-bottom:8px}

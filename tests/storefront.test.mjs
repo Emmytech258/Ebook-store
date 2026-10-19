@@ -25,7 +25,7 @@ async function page(config={page:'home'},cart=[],receipt=null){
  Object.defineProperty(window.HTMLElement.prototype,'open',{configurable:true,get(){return this.hasAttribute('open');}});window.HTMLElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLElement.prototype.close=function(){this.removeAttribute('open');this.dispatchEvent(new window.Event('close'));};if(!window.HTMLElement.prototype.focus)window.HTMLElement.prototype.focus=function(){};
  localStorage.setItem('bs-book-cart',JSON.stringify({books:cart,at:Date.now()}));
  const location={origin:'https://store.example.invalid',search:receipt?'?ref=BS-private&k=PRIVATE-KEY':'',assign:u=>navigation.push(u)};
- window.location=location;window.Bachs=config.bachs;window.scrollTo=()=>{};window.BSTracking={init:(...args)=>events.push(['init',...args]),track:(...args)=>events.push(args)};
+ window.location=location;window.Bachs=config.bachs;window.scrollTo=()=>{};window.BSTracking={init:(...args)=>events.push(['init',...args]),track:(...args)=>events.push(args),...(config.tracking||{})};
  let releaseCatalog;let timer=0;const timers=new Map(),timerDelays=new Map();
  const fetch=async(url,options={})=>{requests.push({url,options});if(url.endsWith('/country'))return Response.json({country:config.country||'NG',currency:(locationCurrency[config.country||'NG']||'USD')});if(url.endsWith('/catalog')){if(config.holdCatalog)await new Promise(resolve=>{releaseCatalog=resolve;});return Response.json({books:config.catalogBooks||all,featured_book_id:config.featuredBook||'',currencies:config.currencies||['NGN','KES','UGX','USD'],country:config.country||'NG',currency:(locationCurrency[config.country||'NG']||'USD'),nonce:'test-nonce',mode:config.mode||'live',cart_enabled:true,checkout_enabled:true,contact_enabled:true,reviews_enabled:true,pixel_id:'1234567890',typography:config.typography||'classic',support_email:'support@example.invalid'});}if(url.endsWith('/counts'))return Response.json({books:typeof config.counts==='function'?config.counts():config.counts||[]});if(url.endsWith('/checkout'))return Response.json(config.checkoutResult||{checkout_url:config.checkoutUrl||'https://checkout.flutterwave.com/v3/hosted/pay/test'});if(url.endsWith('/verify'))return config.verifyResponse?config.verifyResponse():Response.json(receipt);throw new Error('Unexpected request: '+url);};
  const context=vm.createContext({window,document,location,localStorage,sessionStorage,fetch,FormData:BrowserFormData,URL,URLSearchParams,Intl,Date,JSON,Map,Set,Number,String,Boolean,AbortController,setTimeout:(fn,delay)=>{timers.set(++timer,fn);timerDelays.set(timer,delay);return timer;},clearTimeout:id=>{timers.delete(id);timerDelays.delete(id);}});vm.runInContext(script,context);await tick();
@@ -259,4 +259,19 @@ test('Payment retry from a private purchase page never loads the Bachs script in
  click(p,'[data-retry-checkout]');const form=p.document.querySelector('#bs-checkout-form');form.querySelector('[name=name]').value='Reader';form.querySelector('[name=email]').value='reader@example.com';form.querySelector('[name=consent]').checked=true;
  form.dispatchEvent(new p.window.Event('submit',{bubbles:true,cancelable:true}));await tick();
  assert.equal(opened,0);assert.equal(p.document.head.querySelector('script[src="https://checkout.bachs.io/bachs.js"]'),null);assert.equal(p.navigation[0],result.checkout_url);
+});
+
+test('Refund, delivery and terms pages state the agreed rules and the footer links to them',async()=>{
+ const home=await page();for(const slug of ['refunds','delivery','terms','privacy'])assert.ok(home.document.querySelector('.bs-footer a[data-page="'+slug+'"]'),slug);
+ const refunds=(await page({page:'refunds'})).document.querySelector('.bs-reading-width').textContent;assert.match(refunds,/within 7 days/);assert.match(refunds,/within 24 hours on working days/);assert.match(refunds,/change of mind/);assert.match(refunds,/does not limit any right you have under the law/);
+ const delivery=(await page({page:'delivery'})).document.querySelector('.bs-reading-width').textContent;assert.match(delivery,/48 hours/);assert.match(delivery,/before you pay again/);
+ const terms=(await page({page:'terms'})).document.querySelector('.bs-reading-width').textContent;assert.match(terms,/do not copy, resell, share or upload/);
+});
+test('The tracking choice notice appears only when a choice is needed and passes the visitor choice on',async()=>{
+ assert.equal((await page()).document.querySelector('.bs-consent-banner'),null);
+ const calls=[];
+ const p=await page({tracking:{available:()=>true,needsChoice:()=>true,consented:()=>false,setConsent:v=>{calls.push(v);return true;},resetChoice:()=>calls.push('reset')}});
+ assert.ok(p.document.querySelector('.bs-consent-banner'));
+ click(p,'[data-consent-choice="no"]');assert.deepEqual(calls,[false]);
+ click(p,'[data-consent-reset]');assert.deepEqual(calls,[false,'reset']);
 });

@@ -38,7 +38,7 @@ export async function checkout(env,req,data) {
   const amount=Math.round(items.reduce((sum,i)=>sum+i.amount,0)*100)/100;
   assert(Number.isFinite(data.expected_amount)&&Math.abs(data.expected_amount-amount)<0.005,409,'The price has changed. Please review the updated total.',{books:items.map(item=>({id:item.id,prices:{[currency]:item.amount}}))});
   const ref='BS-'+randomToken(18),key=randomToken(),origin=originFor(env,s,req);
-  const metaUser=metaActive(s)?await encrypt(env,JSON.stringify(attribution(req,data.meta_context))):null;
+  const metaUser=metaActive(s)&&data.meta_consent===true?await encrypt(env,JSON.stringify(attribution(req,data.meta_context))):null;
   await env.DB.prepare('INSERT INTO orders(ref,key_hash,key_enc,name,email,country,amount,currency,items,mode,created_at,meta_user_data,provider) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(ref,await digest(key),await encrypt(env,key),name,email,country,amount,currency,JSON.stringify(items),s.mode,now(),metaUser,provider).run();
   const page=origin+'/books/download/?ref='+encodeURIComponent(ref)+'&k='+encodeURIComponent(key);
   if(provider==='bachs'){

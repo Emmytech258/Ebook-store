@@ -5,10 +5,11 @@ import vm from 'node:vm';
 import {parseHTML} from 'linkedom';
 
 const script=await readFile(new URL('../public/tracking.js',import.meta.url),'utf8');
-function browser(path='/books/a-book/',search=''){
+function browser(path='/books/a-book/',search='',consent='yes'){
  const {window,document}=parseHTML('<html><head></head><body></body></html>');
  // Linkedom shares some global properties across document windows.
  window.fbq=undefined;window.BSTracking=undefined;
+ const storage=new Map(consent?[['bs-tracking-consent',consent]]:[]);window.localStorage={getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)};
  const jar=new Map(),requests=[];
  Object.defineProperty(document,'cookie',{configurable:true,get:()=>[...jar].map(([k,v])=>k+'='+v).join('; '),set:value=>{const pair=value.split(';')[0],at=pair.indexOf('=');jar.set(pair.slice(0,at),pair.slice(at+1));}});
  let serial=0;Object.defineProperty(window,'crypto',{value:{randomUUID:()=> 'event-test-'+(++serial)},configurable:true});
@@ -66,4 +67,26 @@ test('The isolated pixel accepts purchase totals only from its parent and suppor
  handlers.message({origin:'https://attacker.example',source:parent,data});handlers.message({origin:'https://store.example.invalid',source:{},data});assert.equal(window.fbq.queue.length,1);
  for(const currency of ['NGN','GHS','KES','MWK','RWF','TZS','UGX','XAF','XOF','ZMW'])handlers.message({origin:'https://store.example.invalid',source:parent,data:{...data,data:{...data.data,currency}}});
  const events=window.fbq.queue.filter(args=>args[0]==='track');assert.equal(events.length,10);for(const event of events){assert.equal(event[2].email,undefined);assert.equal(event[3].eventID,'verified-test-purchase');}
+});
+
+test('Nothing loads or is sent until the visitor accepts tracking',()=>{
+ const p=browser('/books/a-book/','?fbclid=approved-ad-click',null);
+ p.tracking.init('1234567890','live','book',{nonce:'page-nonce',conversions_api_enabled:true});
+ p.tracking.track('ViewContent',{content_ids:['a-book']});
+ assert.equal(p.tracking.needsChoice(),true);assert.equal(p.window.fbq,undefined);assert.equal(p.requests.length,0);assert.equal(p.jar.size,0);
+});
+test('Declining keeps tracking off and accepting later starts one page view with matching IDs',()=>{
+ const no=browser('/books/a-book/','',null);no.tracking.init('1234567890','live','book',{nonce:'n',conversions_api_enabled:true});
+ no.tracking.setConsent(false);no.tracking.track('AddToCart',{content_ids:['a-book']});
+ assert.equal(no.tracking.needsChoice(),false);assert.equal(no.window.fbq,undefined);assert.equal(no.requests.length,0);
+ const yes=browser('/books/a-book/','',null);yes.tracking.init('1234567890','live','book',{nonce:'n',conversions_api_enabled:true});
+ yes.tracking.setConsent(true);yes.tracking.setConsent(true);
+ const views=yes.window.fbq.queue.filter(a=>a[0]==='track'&&a[1]==='PageView');assert.equal(views.length,1);assert.equal(yes.requests.length,1);
+ assert.equal(JSON.parse(yes.requests[0].options.body).event_id,views[0][3].eventID);
+});
+test('A private purchase page sends no purchase tracking without consent',()=>{
+ const p=browser('/books/download/','?ref=PRIVATE-REFERENCE&k=PRIVATE-KEY',null);
+ p.tracking.init('1234567890','live','download',{nonce:'n',conversions_api_enabled:true});
+ p.tracking.track('Purchase',{value:1,currency:'NGN',content_ids:['a-book']},'purchase-PRIVATE');
+ assert.equal(p.document.querySelector('iframe'),null);
 });
