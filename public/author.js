@@ -4,7 +4,8 @@ const state={csrf:'',tab:'books',books:[],settings:null,page:1,salesFilter:{},or
 const e=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const date=value=>value?new Date(value*1000).toLocaleString('en-GB',{timeZone:'UTC',hour12:false}):'Pending';
 const money=(value,currency='NGN')=>new Intl.NumberFormat('en-NG',{style:'currency',currency,maximumFractionDigits:currency==='UGX'?0:2}).format(value);
-function toast(message,error=false){notice.textContent=message;notice.classList.toggle('error',error);notice.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>notice.hidden=true,6500);}
+function toast(message,error=false){notice.textContent=error?message+' (click this message to close it)':message;notice.setAttribute('role',error?'alert':'status');notice.classList.toggle('error',error);notice.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>notice.hidden=true,error?60000:6500);}
+notice.addEventListener('click',()=>{notice.hidden=true;clearTimeout(toast.timer);});
 async function api(path,data,options={}){
   const headers={'X-BS-CSRF':state.csrf,...options.headers};if(data&&!options.raw)headers['Content-Type']='application/json';
   const response=await fetch(API+path,{method:options.method||(data?'POST':'GET'),headers,body:data?(options.raw?data:JSON.stringify(data)):undefined,credentials:'same-origin',cache:'no-store'});
