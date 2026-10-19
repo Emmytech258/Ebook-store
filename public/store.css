@@ -133,7 +133,6 @@ body.bs-checkout-open{overflow:hidden}
 #bs-page .bs-price{display:inline-block;min-height:1.4em}
 #bs-page .bs-country{min-width:88px;min-height:44px;font-size:16px;background:var(--paper,#fff);color:var(--ink);border-color:var(--line)}
 #bs-page[data-theme=dark] .bs-country{background:#19241c}
-#bs-page[data-theme=dark] .bs-logo{filter:brightness(0) invert(1)}
 #bs-page .bs-feature-image{display:block;width:100%;height:100%}
 #bs-page .bs-feature-image img{width:100%;height:100%;max-height:620px;object-fit:cover;object-position:50% 46%}
 #bs-page .bs-feature-label>div{min-width:0}
