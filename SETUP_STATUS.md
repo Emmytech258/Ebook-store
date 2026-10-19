@@ -9,8 +9,8 @@ Last updated: 2026-10-19
 | Business identity and copy | Partly done | Store name set to Revival Fire Forum; tagline and homepage copy are drafts for owner approval. Registered business name, seller country and public contact details still pending |
 | Own GitHub repository | Pushed to main | Repo Emmytech258/Ebook-store, branch main. Clean files at the repo root pushed on 2026-10-19 (commit 8bec7c2). Claude now has write access |
 | Domain and Cloudflare | Domain active | revivalfireforum.online bought at Namecheap on 2026-10-19 (1 year; renewal is far higher, review before it renews). Added to Cloudflare Free plan; nameservers changed and Cloudflare shows Active. store.config.json domain set; npm run configure applied (custom-domain mode). Owner deleted the Namecheap parking A and www CNAME records on 2026-10-19 |
-| Independent D1 and private R2 | Not created | Names chosen: revival-fire-forum-db, revival-fire-forum-files. The deploy script creates both. Owner must first enable R2 in Cloudflare (dashboard location being confirmed) |
-| Owner login and authenticator | Not initialized | Pending private setup |
+| Independent D1 and private R2 | Deployed by build | R2 enabled by owner. Workers Build #891f9986 on main succeeded on 2026-10-19; the deploy script creates the D1 database and private bucket and refuses a public bucket. Owner to confirm both appear in the Cloudflare dashboard |
+| Owner login and authenticator | Pending first login | Initial password was set privately as a build secret. Owner must log in at /books/author/, change the password, enable the authenticator and store recovery codes privately |
 | Catalog, covers and PDFs | Empty | Owner will upload all books in the portal |
 | Provider and currencies | Disabled | Owner has Flutterwave and Bachs with test and live approved. Keys go in the owner portal only |
 | Resend and support inbox | Disabled | Owner wants a full mailbox for replies. support_email set to hello@revivalfireforum.online (assumed from the owner's note, confirm). Namecheap's default forwarding MX records are still in DNS and will be replaced when the mailbox is chosen |
@@ -18,4 +18,4 @@ Last updated: 2026-10-19
 | Meta Pixel and CAPI | Wanted, disabled for now | Owner has a Meta ads account and Pixel. Consent controls to be reviewed before enabling |
 | Checkout reminders | Wanted, disabled for now | Enable only after the privacy notice covers them |
 | Mobile, payments, files | Local tests only | npm run check, npm test (107 passing) and npm run build (dry run) pass locally. Own-domain checks pending |
-| Live launch | Not deployed | Pending domain, Cloudflare, providers, email and authorized verification |
+| Live launch | Deployed, not selling | Worker revival-fire-forum-store deployed from main (build #891f9986). https://revivalfireforum.online/books/ and /books/author/ return the Revival Fire Forum pages (checked with a text fetch only; browser check by owner pending). Checkout stays in setup mode until email, provider keys and sandbox tests are done |
