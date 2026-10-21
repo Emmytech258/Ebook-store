@@ -239,7 +239,13 @@
       return trusted&&target.protocol==='https:'&&!target.username&&!target.password&&!target.port&&!target.hash&&/^\/v3\/hosted\/pay\/[A-Za-z0-9_-]+\/?$/.test(target.pathname)?target:null;
     }catch{return null;}
   }
-  let bachsLoader=null,bachsInitializedOrigin='';
+  let bachsLoader=null,bachsInitializedOrigin='',bachsOpen=false,bachsSdk=null;
+  window.addEventListener('message',event=>{
+    // The payment-cancelled page inside the Bachs box sends this when the buyer clicks Exit checkout. Closing our own overlay is the only thing it can do.
+    if(!bachsOpen||!event.data||event.data.source!=='bs-payment-cancelled'||(event.origin!==location.origin&&event.origin!=='null'))return;
+    bachsOpen=false;try{bachsSdk?.Checkout?.close();}catch{}
+    message('Payment did not finish. You can return to your cart and try again.',true);
+  });
   async function openBachsCheckout(result,target){
     let back;try{back=new URL(result.return_url,location.origin);}catch{}
     if(!back||back.origin!==location.origin||back.pathname!=='/books/download/'||back.searchParams.get('ref')!==result.ref||!back.searchParams.get('k'))throw new Error('We could not open your purchase page safely.');
@@ -253,8 +259,9 @@
         script.onerror=()=>{clearTimeout(timer);script.remove();bachsLoader=null;reject(new Error('Checkout could not load.'));};document.head.append(script);
       });
       const sdk=await bachsLoader;if(bachsInitializedOrigin!==target.origin){sdk.Initialize({baseUrl:target.origin});bachsInitializedOrigin=target.origin;}
-      state.paying=false;closeCheckout();
+      state.paying=false;closeCheckout();bachsSdk=sdk;bachsOpen=true;
       await sdk.Checkout.open({checkoutUrl:target.href,onEvent:event=>{
+        if(event.type==='checkout.closed')bachsOpen=false;
         if(event.type==='checkout.completed'&&(!event.data?.reference||event.data.reference===result.ref))window.location.assign(back.href);
         if(event.type==='checkout.failed'||event.type==='checkout.expired')message('Payment did not finish. You can return to your cart and try again.',true);
       }});

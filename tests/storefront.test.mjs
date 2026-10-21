@@ -223,6 +223,18 @@ test('Bachs opens over the shop, submits the displayed total and waits for serve
  opened.onEvent({type:'checkout.completed',data:{reference:'ANOTHER'}});assert.equal(p.navigation.length,0);
  opened.onEvent({type:'checkout.completed',data:{reference:'BS-client'}});assert.equal(p.navigation[0],result.return_url);assert.equal(p.events.filter(e=>e[0]==='Purchase').length,0);
 });
+test('Exiting Bachs checkout closes the box and shows a clear message, and strangers cannot trigger it',async()=>{
+ let opened,closed=0;const bachs={Initialize:()=>{},Checkout:{open:async options=>{opened=options;},close:()=>closed++}};
+ const result={provider:'bachs',checkout_id:'chk_client',ref:'BS-client',checkout_url:'https://checkout.bachs.io/c/client_token',return_url:'https://store.example.invalid/books/download/?ref=BS-client&k=private-key'};
+ const p=await page({country:'GH',currencies:mobileCurrencies,bachs,checkoutResult:result},[all[0].id]);click(p,'.bs-cart-link');
+ const dialog=p.document.querySelector('#bs-checkout-dialog'),form=dialog.querySelector('form');form.querySelector('[name=name]').value='Reader';form.querySelector('[name=email]').value='reader@example.com';form.querySelector('[name=consent]').checked=true;
+ const send=(data,origin)=>{const e=new p.window.Event('message');e.data=data;e.origin=origin;p.window.dispatchEvent(e);};
+ send({source:'bs-payment-cancelled'},'https://store.example.invalid');assert.equal(closed,0);
+ form.dispatchEvent(new p.window.Event('submit',{bubbles:true,cancelable:true}));await tick();assert.ok(opened);
+ send({source:'bs-payment-cancelled'},'https://evil.example.invalid');send({source:'something-else'},'https://store.example.invalid');send(null,'https://store.example.invalid');assert.equal(closed,0);
+ send({source:'bs-payment-cancelled'},'https://store.example.invalid');assert.equal(closed,1);assert.equal(p.navigation.length,0);assert.match(p.document.querySelector('#bs-form-result')?.textContent||'',/Payment did not finish/);
+ send({source:'bs-payment-cancelled'},'https://store.example.invalid');assert.equal(closed,1);
+});
 test('Bachs SDK loading failure falls back to its trusted hosted page and unsafe links are refused',async()=>{
  const result={provider:'bachs',checkout_id:'chk_client',ref:'BS-client',checkout_url:'https://checkout.bachs.io/c/client_token',return_url:'https://store.example.invalid/books/download/?ref=BS-client&k=private-key'};
  for(const unsafe of [false,true]){

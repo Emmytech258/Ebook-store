@@ -28,7 +28,7 @@ async function handle(env,req,ctx) {
   if(path===BASE)return Response.redirect(url.origin+BASE+'/'+url.search,308);
   if(!path.startsWith(BASE+'/'))return new Response('Page not found',{status:404});
   const relative=path.slice(BASE.length);
-  if(/^\/(assets\/[a-z0-9-]+\.(?:webp|svg|png|jpg)|store\.(js|css)|author\.(js|css)|upload\.js|tracking\.js|pixel-frame\.(html|js)|payment-cancelled\.html)$/.test(relative))return env.ASSETS.fetch(new Request(url.origin+relative,req));
+  if(/^\/(assets\/[a-z0-9-]+\.(?:webp|svg|png|jpg)|store\.(js|css)|author\.(js|css)|upload\.js|tracking\.js|pixel-frame\.(html|js)|payment-cancelled\.(?:html|js))$/.test(relative))return env.ASSETS.fetch(new Request(url.origin+relative,req));
   assert(env.DB&&env.FILES,503,'The bookshop is still being set up. Please try again shortly.');
   await initialize(env);
   if(path.startsWith(API)){
@@ -103,7 +103,7 @@ export default {
     if(url.pathname==='/books/payment-cancelled.html'){
       // Static, harmless page. Only the store and Bachs checkout may show it in a frame, so the Exit button works. The private download page stays unframeable.
       out.headers.delete('X-Frame-Options');
-      out.headers.set('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors "+url.origin+" https://checkout.bachs.io https://sandbox-checkout.bachs.io");
+      out.headers.set('Content-Security-Policy',"default-src 'none'; script-src "+url.origin+"; style-src 'unsafe-inline'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors "+url.origin+" https://checkout.bachs.io https://sandbox-checkout.bachs.io");
       out.headers.set('Cache-Control','no-store');out.headers.set('X-Robots-Tag','noindex, nofollow');
     }
     return out;
