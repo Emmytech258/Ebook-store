@@ -287,3 +287,12 @@ test('The tracking choice notice appears only when a choice is needed and passes
  click(p,'[data-consent-choice="no"]');assert.deepEqual(calls,[false]);
  click(p,'[data-consent-reset]');assert.deepEqual(calls,[false,'reset']);
 });
+test('Policy pages carry the owner-approved additions and the homepage uses the faith-focused copy',async()=>{
+ const text=async name=>(await page({page:name})).document.querySelector('main').textContent.replace(/\s+/g,' ');
+ const terms=await text('terms'),refunds=await text('refunds'),delivery=await text('delivery'),privacy=await text('privacy');
+ assert.match(terms,/Who we are.*Lagos, Nigeria/);assert.match(terms,/payment page may add a small processing fee/);assert.match(terms,/not a substitute for professional medical, legal or counselling help/);
+ assert.match(refunds,/processing fee.*not refunded.*refund covers the price of the book/);
+ assert.match(delivery,/we will resend it/);assert.match(delivery,/If you pay less than the total/);
+ assert.match(privacy,/Resend.*Cloudflare/);assert.match(privacy,/correct or delete your details/);
+ const home=await page();assert.equal(home.document.querySelector('.bs-kicker').textContent.includes('Practical books'),false);
+});
