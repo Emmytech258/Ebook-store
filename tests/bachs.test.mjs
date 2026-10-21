@@ -390,3 +390,16 @@ test('A stuck live ZMW sale recovers through verification, sends its PDF and cou
   const notPaid=await verify(unsigned);assert.equal(notPaid.data.status,'pending');assert.equal(notPaid.data.books,undefined);assert.equal(messages.length,prior+1);
   await configure({mode:'test'});
 });
+
+test('The clean-up migration removes test and old unpaid orders but keeps paid live orders and sold counts',async()=>{
+  const nowSec=Math.floor(Date.now()/1000),old=nowSec-7200,rows=[['BS-clean-test-paid','test','paid',old],['BS-clean-test-pending','test','pending',nowSec],['BS-clean-live-old-pending','live','pending',old],['BS-clean-live-new-pending','live','pending',nowSec-60],['BS-clean-live-paid','live','paid',old]];
+  const before=await db.prepare('SELECT COALESCE(SUM(count),0) n FROM book_purchase_counts').first();
+  for(const [ref,mode,status,at] of rows)await db.prepare("INSERT INTO orders(ref,key_hash,key_enc,name,email,amount,currency,items,status,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(ref,'h','e','N','n@example.com',100,'NGN','[]',status,mode,at).run();
+  await db.prepare('INSERT INTO downloads(order_ref,book_id,started_at) VALUES(?,?,?)').bind('BS-clean-test-paid','book-x',old).run();
+  await db.exec(await readFile(root+'migrations/0009_clear_test_orders.sql','utf8'));
+  const left=(await db.prepare("SELECT ref FROM orders WHERE ref LIKE 'BS-clean-%' ORDER BY ref").all()).results.map(r=>r.ref);
+  assert.deepEqual(left,['BS-clean-live-new-pending','BS-clean-live-paid']);
+  assert.equal((await db.prepare("SELECT COUNT(*) n FROM downloads WHERE order_ref='BS-clean-test-paid'").first()).n,0);
+  assert.equal((await db.prepare('SELECT COALESCE(SUM(count),0) n FROM book_purchase_counts').first()).n,before.n);
+  await db.prepare("DELETE FROM orders WHERE ref LIKE 'BS-clean-%'").run();
+});
