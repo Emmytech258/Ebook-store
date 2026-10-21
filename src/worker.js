@@ -104,7 +104,7 @@ export default {
       // Static, harmless page. Only the store and Bachs checkout may show it in a frame, so the Exit button works. The private download page stays unframeable.
       out.headers.delete('X-Frame-Options');
       out.headers.set('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors "+url.origin+" https://checkout.bachs.io https://sandbox-checkout.bachs.io");
-      out.headers.set('Cache-Control','public, max-age=3600');out.headers.set('X-Robots-Tag','noindex, nofollow');
+      out.headers.set('Cache-Control','no-store');out.headers.set('X-Robots-Tag','noindex, nofollow');
     }
     return out;
   },
