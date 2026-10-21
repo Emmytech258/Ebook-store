@@ -335,3 +335,11 @@ test('A buyer who declined tracking gets the books and no Meta purchase event is
  assert.ok(!(await db.prepare('SELECT id FROM meta_events WHERE id=?').bind('purchase-'+order.ref).first()));
  assert.equal(metaRequests.filter(x=>x.data[0].event_id==='purchase-'+order.ref).length,0);
 });
+
+test('Contact-form messages reach support and Reply goes to the customer, while receipts still reply to support',async()=>{
+ const before=emails.length;
+ const sent=await call('/books/api/contact',{method:'POST',publicPost:true,data:{name:'Visitor Name',email:'visitor@example.com',message:'I need help with my payment please.',consent:true,reference:'BS-help'}});assert.equal(sent.status,200);
+ const message=emails.slice(before).find(m=>m.idempotency.startsWith('contact/'));assert.ok(message);assert.equal(message.body.to.length,1);assert.notEqual(message.body.to[0],'visitor@example.com');
+ assert.equal(message.body.reply_to,'visitor@example.com');
+ const receipt=emails.find(m=>m.idempotency.startsWith('receipt/'));if(receipt)assert.notEqual(receipt.body.reply_to,'visitor@example.com');
+});

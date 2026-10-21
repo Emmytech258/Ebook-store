@@ -128,9 +128,9 @@ export async function downloadUrl(env,s,order,id,req,expires=now()+172800) {
   const signature=await sign(env,order.ref+'.'+id+'.'+expires);
   return originFor(env,s,req)+'/books/api/download?ref='+encodeURIComponent(order.ref)+'&book='+encodeURIComponent(id)+'&e='+expires+'&s='+encodeURIComponent(signature);
 }
-export async function mail(env,s,to,subject,html,idempotencyKey) {
+export async function mail(env,s,to,subject,html,idempotencyKey,replyTo=s.support_email) {
   assert(s.resend_key&&s.from_email,503,'Email setup is incomplete.');
-  const {response,data}=await upstream(env,'https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+await decrypt(env,s.resend_key),'Content-Type':'application/json','Idempotency-Key':idempotencyKey},body:JSON.stringify({from:(s.from_name||BRAND.store_name)+' <'+s.from_email+'>',to:[to],reply_to:s.support_email,subject,html})});
+  const {response,data}=await upstream(env,'https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+await decrypt(env,s.resend_key),'Content-Type':'application/json','Idempotency-Key':idempotencyKey},body:JSON.stringify({from:(s.from_name||BRAND.store_name)+' <'+s.from_email+'>',to:[to],reply_to:replyTo,subject,html})});
   assert(response.ok&&data.id,502,'Our email service could not accept this message.');return data.id;
 }
 const shell=html=>'<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172d27;line-height:1.7"><h2 style="color:#174c3c">'+escapeHtml(BRAND.store_name)+'</h2>'+html+'</div>';

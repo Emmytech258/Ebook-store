@@ -61,7 +61,7 @@ async function handle(env,req,ctx) {
     if(action==='review')return json(await reviews(env,data));
     if(action==='contact'){
       const name=String(data.name||'').trim(),email=String(data.email||'').trim(),message=String(data.message||'').trim();assert(!data.website&&data.consent===true&&name.length>=2&&name.length<=120&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=200&&message.length>=10&&message.length<=5000,400,'Please check your name, email address and message.');
-      const s=await settings(env);await mail(env,s,s.support_email,BRAND.store_name+' support request','<p>From: '+escapeHtml(name)+' ('+escapeHtml(email)+')</p><p>Reference: '+escapeHtml(String(data.reference||'').slice(0,120))+'</p><p>'+escapeHtml(message).replace(/\n/g,'<br>')+'</p>','contact/'+crypto.randomUUID());return json({ok:true});
+      const s=await settings(env);await mail(env,s,s.support_email,BRAND.store_name+' support request','<p>From: '+escapeHtml(name)+' ('+escapeHtml(email)+')</p><p>Reference: '+escapeHtml(String(data.reference||'').slice(0,120))+'</p><p>'+escapeHtml(message).replace(/\n/g,'<br>')+'</p>','contact/'+crypto.randomUUID(),email);return json({ok:true});
     }
     throw new HttpError(404,'We could not find that action.');
   }
