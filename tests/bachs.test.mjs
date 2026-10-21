@@ -104,7 +104,7 @@ test('Every requested currency reaches the correct gateway with a frozen local a
     if(currency==='NGN'){assert.equal(request.body.payment_options,'card,banktransfer,ussd');continue;}
     assert.equal(o.data.mode,'test');assert.equal(new URL(o.data.checkout_url).hostname,'sandbox-checkout.bachs.io');assert.equal(request.provider,'bachs');assert.equal(request.body.pricing.currency,currency);assert.equal(Number(request.body.pricing.amount),o.amount);assert.equal(request.body.billing_currency,currency);assert.deepEqual(request.body.payment_method_types,['MOMO_'+currency]);
     assert.equal(request.body.reference,o.row.ref);assert.equal(request.body.customer.phone_number,undefined);assert.equal(request.body.product_cart,undefined);assert.equal(request.idempotency,'bookshop/'+o.row.ref);
-    assert.equal(new URL(request.body.success_url).origin,origin);assert.equal(new URL(request.body.cancel_url).origin,origin);
+    assert.equal(new URL(request.body.success_url).origin,origin);assert.equal(new URL(request.body.cancel_url).origin,origin);assert.equal(new URL(request.body.cancel_url).pathname,'/books/payment-cancelled.html');assert.equal(request.body.cancel_url.includes('k='),false);
   }
 });
 test('A browser return or a completed API session cannot deliver books without a signed webhook',async()=>{

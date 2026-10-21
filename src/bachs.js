@@ -18,7 +18,7 @@ export async function startBachsCheckout(env,s,order,page){
   const {response,data}=await bachs(env,s,'checkout-sessions','POST',{
     pricing:{currency:order.currency,amount:order.amount.toFixed(2)},billing_currency:order.currency,
     payment_method_types:[corridor],customer:{email:order.email,name:order.name},
-    reference:order.ref,metadata:{order_ref:order.ref},success_url:page,cancel_url:page,expires_in_minutes:60
+    reference:order.ref,metadata:{order_ref:order.ref},success_url:page,cancel_url:new URL('/books/payment-cancelled.html',page).href,expires_in_minutes:60
   },order.mode,'bookshop/'+order.ref);
   const messages={ACCOUNT_NOT_ACTIVATED:'This payment currency is not available yet. Please choose another currency.',ACCOUNT_PAYMENT_METHODS_RESTRICTED:'This payment currency is temporarily unavailable. Please choose another currency.',CHECKOUT_HAS_NO_PAYMENT_METHOD:'This payment currency is temporarily unavailable. Please choose another currency.',CHECKOUT_RESTRICTION_LEAVES_NO_PAYMENT_METHOD:'This payment currency is temporarily unavailable. Please choose another currency.'};
   assert(response.ok&&identifier(data.checkout_id),502,messages[data.error_code]||'We could not open payment. Please try again.');
