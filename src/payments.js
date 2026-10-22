@@ -151,10 +151,10 @@ export async function receiptEmail(env,order,req,manual=false) {
 export async function verifyOrder(env,req,data) {
   let order=await privateOrder(env,data.ref,data.key);await authorizeTestAccess(env,req,order.mode);order=await reconcile(env,order,data.transaction_id);
   if(order.status!=='paid'){
-    const status=['failed','underpaid','review','expired','cancelled'].includes(order.status)?order.status:'pending',pending=['not_found','not_successful','awaiting_webhook'].includes(order.confirmation?.code);
-    const message=status!=='pending'?confirmationMessage(status==='review'?'needs_review':status,order.provider):pending?'We are waiting for your payment confirmation. Your books will appear here as soon as it arrives.':'The payment details need another check. Please contact support with your reference if you have paid.';
-    const resumeAllowed=['failed','pending'].includes(status)&&(order.provider!=='bachs'||order.confirmation?.checkout_open),resume=resumeAllowed?(order.provider==='bachs'?bachsCheckoutTarget(order.checkout_url,order.mode):checkoutTarget(order.checkout_url,order.mode)):null;
-    const retry=['failed','expired','cancelled'].includes(status)&&!resume?JSON.parse(order.items).map(i=>i.id):[];
+    const status=['failed','underpaid','review','expired','cancelled'].includes(order.status)?order.status:'pending',pending=['not_found','not_successful','awaiting_webhook'].includes(order.confirmation?.code),aged=status==='pending'&&order.provider!=='bachs'&&order.confirmation?.code==='not_found'&&order.created_at<=now()-840;
+    const message=aged?'This payment link has expired and no payment was found. Open a new checkout to continue.':status!=='pending'?confirmationMessage(status==='review'?'needs_review':status,order.provider):pending?'We are waiting for your payment confirmation. Your books will appear here as soon as it arrives.':'The payment details need another check. Please contact support with your reference if you have paid.';
+    const resumeAllowed=!aged&&['failed','pending'].includes(status)&&(order.provider!=='bachs'||order.confirmation?.checkout_open),resume=resumeAllowed?(order.provider==='bachs'?bachsCheckoutTarget(order.checkout_url,order.mode):checkoutTarget(order.checkout_url,order.mode)):null;
+    const retry=(['failed','expired','cancelled'].includes(status)||aged)&&!resume?JSON.parse(order.items).map(i=>i.id):[];
     return {status,ref:order.ref,provider:order.provider||'flutterwave',mode:order.mode,currency:order.currency,message,resume_url:resume?.href||'',retry_books:retry};
   }
   const s=await settings(env),sent=await receiptEmail(env,order,req),items=JSON.parse(order.items),books=[];
@@ -182,8 +182,9 @@ export async function reminderEmail(env,order) {
   if(order.status==='paid'){await receiptEmail(env,order);return;}
   const claim=await env.DB.prepare("UPDATE orders SET reminder_lock=? WHERE ref=? AND status='pending' AND reminder_sent_at IS NULL AND reminder_lock<?").bind(now(),order.ref,now()-90).run();if(!claim.meta.changes)return;
   try{
+    const key=await decrypt(env,order.key_enc),page=originFor(env,s)+'/books/download/?ref='+encodeURIComponent(order.ref)+'&k='+encodeURIComponent(key);
     const titles=JSON.parse(order.items).map(i=>'<li>'+escapeHtml(i.title)+'</li>').join('');
-    await mail(env,s,order.email,'Your selected books are still in your cart',shell('<p>Hello '+escapeHtml(order.name)+',</p><p>You started checkout for:</p><ul>'+titles+'</ul><p>If you still want these books, <a href="'+escapeHtml(order.checkout_url)+'">continue your payment here</a>.</p><p>If you have already paid, you can ignore this message. If you need help, reply to this email and include your reference: '+escapeHtml(order.ref)+'.</p>'),'reminder/'+order.ref);
+    await mail(env,s,order.email,'Your selected books are still in your cart',shell('<p>Hello '+escapeHtml(order.name)+',</p><p>You started checkout for:</p><ul>'+titles+'</ul><p>If you still want these books, <a href="'+escapeHtml(page)+'">continue your order here</a>.</p><p>If you have already paid, you can ignore this message. If you need help, reply to this email and include your reference: '+escapeHtml(order.ref)+'.</p>'),'reminder/'+order.ref);
     await env.DB.prepare('UPDATE orders SET reminder_sent_at=?,reminder_lock=0,mail_error=NULL WHERE ref=?').bind(now(),order.ref).run();
   }catch{await env.DB.prepare('UPDATE orders SET reminder_lock=0,mail_error=? WHERE ref=?').bind('Checkout reminder needs another attempt.',order.ref).run();}
 }

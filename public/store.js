@@ -296,9 +296,9 @@
         return;
       }
       const text=result.message||'Your payment is still waiting for confirmation. Your downloads will appear after confirmation.';
-      const heading=({failed:'Payment attempt failed.',underpaid:'Payment needs the full amount.',review:'Payment needs a review.',expired:'Checkout expired.',cancelled:'Checkout closed.'})[result.status]||'Payment needs confirmation.';
+      const heading=result.status==='pending'&&Array.isArray(result.retry_books)&&result.retry_books.length?'Your payment link has expired.':({failed:'Payment attempt failed.',underpaid:'Payment needs the full amount.',review:'Payment needs a review.',expired:'Checkout expired.',cancelled:'Checkout closed.'})[result.status]||'Payment needs confirmation.';
       const target=result.resume_url&&['pending','failed'].includes(result.status)?paymentTarget(result.resume_url,result.provider,result.mode):null;
-      const retry=Array.isArray(result.retry_books)&&['failed','expired','cancelled'].includes(result.status)?[...new Set(result.retry_books)].filter(id=>typeof id==='string'&&/^[a-z0-9][a-z0-9-]{0,99}$/.test(id)).slice(0,50):[];
+      const retry=Array.isArray(result.retry_books)&&['failed','expired','cancelled','pending'].includes(result.status)?[...new Set(result.retry_books)].filter(id=>typeof id==='string'&&/^[a-z0-9][a-z0-9-]{0,99}$/.test(id)).slice(0,50):[];
       const canRetry=retry.length&&retry.every(id=>state.books.some(b=>b.id===id&&b.available));
       const action=target?'<a class="bs-btn bs-outline" href="'+e(target.href)+'">'+(result.status==='failed'?'Retry payment':'Continue payment')+'</a>':canRetry?'<button type="button" class="bs-btn bs-outline" data-retry-checkout="'+e(JSON.stringify(retry))+'" data-retry-currency="'+e(result.currency||'')+'">Open a new checkout</button>':'';
       panel.innerHTML='<div class="bs-receipt-symbol">'+icon('lock')+'</div><h1>'+e(heading)+'</h1><p role="status">'+e(text)+'</p><p class="bs-small">Reference: '+e(ref)+'</p><div class="bs-actions"><button type="button" class="bs-btn" data-check-payment>Check again</button>'+action+link('contact',null,'Contact support','bs-text-link')+'</div>';
