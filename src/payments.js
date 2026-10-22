@@ -96,12 +96,13 @@ export async function reconcile(env,order,transactionId) {
   const s=await settings(env);
   const path=transactionId&&/^[0-9]{1,30}$/.test(String(transactionId))?'transactions/'+transactionId+'/verify':'transactions/verify_by_reference?tx_ref='+encodeURIComponent(order.ref);
   let {response,data}=await flutterwave(env,s,path,'GET',undefined,order.mode);
-  if(!response.ok&&response.status!==404)throw new Error('Payment confirmation is temporarily unavailable.');
+  const byReference=path.startsWith('transactions/verify_by_reference'),missing=status=>status===404||byReference&&status===400;
+  if(!response.ok&&!missing(response.status))throw new Error('Payment confirmation is temporarily unavailable.');
   let tx=response.ok&&data.status==='success'?data.data:null,code=tx?paymentIssue(order,tx):'not_found';
   // An older failed attempt must not hide a newer payment under the same order.
   if(path.startsWith('transactions/')&&!path.startsWith('transactions/verify_by_reference')&&code!=='paid'){
     const latest=await flutterwave(env,s,'transactions/verify_by_reference?tx_ref='+encodeURIComponent(order.ref),'GET',undefined,order.mode);
-    if(!latest.response.ok&&latest.response.status!==404)throw new Error('Payment confirmation is temporarily unavailable.');
+    if(!latest.response.ok&&![400,404].includes(latest.response.status))throw new Error('Payment confirmation is temporarily unavailable.');
     if(latest.response.ok&&latest.data.status==='success'&&latest.data.data?.tx_ref===order.ref){tx=latest.data.data;code=paymentIssue(order,tx);}
   }
   const result={code};

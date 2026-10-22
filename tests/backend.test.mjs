@@ -13,7 +13,7 @@ const root=new URL('../',import.meta.url).pathname,origin='https://store.example
 let portalPassword='only-for-test-initial-password';
 let mf,db,files,nonce,cookie,csrf,books,sequence=1000,emailFails=false,staleRates=false,fxMultiplier=1,metaFails=false,checkoutLinkOverride=null;
 const metaRequests=[];
-const payments=new Map(),transactions=new Map(),emails=[],pdfA='%PDF-1.7\nOriginal purchased book A\n%%EOF',pdfB='%PDF-1.7\nOriginal purchased book B\n%%EOF';
+let notFoundStatus=404;const payments=new Map(),transactions=new Map(),emails=[],pdfA='%PDF-1.7\nOriginal purchased book A\n%%EOF',pdfB='%PDF-1.7\nOriginal purchased book B\n%%EOF';
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
 async function external(req){
  const u=new URL(req.url);
@@ -30,7 +30,7 @@ async function external(req){
   if(u.pathname==='/v3/payments'){const p=await req.json();payments.set(p.tx_ref,p);return reply({status:'success',data:{link:checkoutLinkOverride||'https://'+(req.headers.get('Authorization').startsWith('Bearer FLWSECK_TEST-')?'checkout-v2.dev-flutterwave.com':'checkout.flutterwave.com')+'/v3/hosted/pay/'+p.tx_ref}});}
   const byId=u.pathname.match(/^\/v3\/transactions\/(\d+)\/verify$/);
   const tx=byId?transactions.get(byId[1]):[...transactions.values()].find(t=>t.tx_ref===u.searchParams.get('tx_ref'));
-  return tx?reply({status:'success',data:tx}):reply({status:'error',message:'No transaction'},404);
+  return tx?reply({status:'success',data:tx}):reply({status:'error',message:'No transaction'},notFoundStatus);
  }
  throw new Error('Unexpected external request: '+u.host);
 }
@@ -154,7 +154,7 @@ test('Only downloaded purchases can review; ratings are real and support can hid
 });
 test('Scheduled work retries receipt email, sends one book-specific reminder, and recovers paid orders without a webhook',async()=>{
  await call('/__test_cron');assert.equal(emails.filter(e=>e.idempotency==='receipt/'+purchased.ref).length,1);await call('/__test_cron');assert.equal(emails.filter(e=>e.idempotency==='receipt/'+purchased.ref).length,1);
- const order=await makeOrder();await db.prepare('UPDATE orders SET created_at=?,last_check_at=NULL WHERE ref=?').bind(Math.floor(Date.now()/1000)-1000,order.ref).run();await call('/__test_cron');const reminders=emails.filter(e=>e.idempotency==='reminder/'+order.ref);assert.equal(reminders.length,1);for(const b of books.slice(0,2))assert.ok(reminders[0].body.html.includes(b.title));assert.ok(reminders[0].body.html.includes('/books/download/?ref='+encodeURIComponent(order.ref)+'&amp;k=')||reminders[0].body.html.includes('/books/download/?ref='+encodeURIComponent(order.ref)+'&k='));assert.ok(!reminders[0].body.html.includes('checkout.flutterwave.com'));const aged=await verify(order);assert.equal(aged.data.status,'pending');assert.equal(aged.data.resume_url,'');assert.deepEqual(aged.data.retry_books,books.slice(0,2).map(b=>b.id));assert.match(aged.data.message,/expired/);await call('/__test_cron');assert.equal(emails.filter(e=>e.idempotency==='reminder/'+order.ref).length,1);
+ notFoundStatus=400; const order=await makeOrder();await db.prepare('UPDATE orders SET created_at=?,last_check_at=NULL WHERE ref=?').bind(Math.floor(Date.now()/1000)-1000,order.ref).run();await call('/__test_cron');const reminders=emails.filter(e=>e.idempotency==='reminder/'+order.ref);assert.equal(reminders.length,1);for(const b of books.slice(0,2))assert.ok(reminders[0].body.html.includes(b.title));assert.ok(reminders[0].body.html.includes('/books/download/?ref='+encodeURIComponent(order.ref)+'&amp;k=')||reminders[0].body.html.includes('/books/download/?ref='+encodeURIComponent(order.ref)+'&k='));assert.ok(!reminders[0].body.html.includes('checkout.flutterwave.com'));const aged=await verify(order);assert.equal(aged.data.status,'pending');assert.equal(aged.data.resume_url,'');assert.deepEqual(aged.data.retry_books,books.slice(0,2).map(b=>b.id));assert.match(aged.data.message,/expired/);notFoundStatus=404;await call('/__test_cron');assert.equal(emails.filter(e=>e.idempotency==='reminder/'+order.ref).length,1);
  paid(order);await db.prepare('UPDATE orders SET last_check_at=0 WHERE ref=?').bind(order.ref).run();await call('/__test_cron');assert.equal((await db.prepare('SELECT status FROM orders WHERE ref=?').bind(order.ref).first()).status,'paid');assert.equal(emails.filter(e=>e.idempotency==='receipt/'+order.ref).length,1);
  const disabled=await makeOrder([books[1].id]);await api('admin/settings',{method:'POST',auth:true,data:{reminder_enabled:false}});paid(disabled);await db.prepare('UPDATE orders SET created_at=?,last_check_at=0 WHERE ref=?').bind(Math.floor(Date.now()/1000)-1000,disabled.ref).run();await call('/__test_cron');assert.equal((await db.prepare('SELECT status FROM orders WHERE ref=?').bind(disabled.ref).first()).status,'paid');assert.equal(emails.filter(e=>e.idempotency==='reminder/'+disabled.ref).length,0);
 });
