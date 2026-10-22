@@ -196,5 +196,5 @@ export async function scheduled(env) {
   const {results:pending}=await env.DB.prepare("SELECT * FROM orders WHERE status IN ('pending','failed','underpaid','review','expired','cancelled') AND (checkout_url IS NOT NULL OR provider_session IS NOT NULL) AND created_at>? AND (last_check_at IS NULL OR last_check_at<? OR (status='pending' AND reminder_sent_at IS NULL AND created_at<? AND last_check_at<?)) ORDER BY COALESCE(last_check_at,0),created_at LIMIT 10").bind(now()-2592000,now()-600,now()-900,now()-60).all();
   for(let order of pending){try{order=await reconcile(env,order);if(order.status==='paid')await receiptEmail(env,order);else if(order.created_at<=now()-900&&order.created_at>now()-172800)await reminderEmail(env,order);}catch{}}
   await flushMeta(env);
-  await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE expires_at<?').bind(now()),env.DB.prepare('DELETE FROM limits WHERE expires_at<?').bind(now()),env.DB.prepare("DELETE FROM orders WHERE status NOT IN ('paid','underpaid','review') AND COALESCE(payment_code,'')!='awaiting_webhook' AND created_at<?").bind(now()-2592000)]);
+  await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE expires_at<?').bind(now()),env.DB.prepare('DELETE FROM limits WHERE expires_at<?').bind(now())]);
 }

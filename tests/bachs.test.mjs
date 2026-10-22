@@ -320,7 +320,7 @@ test('A stale failed check cannot erase a concurrent partial payment or its supp
 });
 
 
-test('Cleanup keeps unresolved partial payments and missing success confirmations while removing old unpaid checkouts',async()=>{
+test('Cleanup keeps unresolved partial payments and missing success confirmations and also keeps old unpaid checkouts',async()=>{
   await configure({mode:'test'});const partial=await order(),s=sessions.get(partial.row.provider_session);
   s.payment_status='processing';s.charge={payment_id:'pay_keep_partial',status:'underpaid',amount:(partial.amount/2).toFixed(2),currency:s.currency};await deliver(partial,{type:'collection.underpaid'});
   const waiting=await order();complete(waiting);assert.notEqual((await verify(waiting)).data.status,'paid');
@@ -328,7 +328,7 @@ test('Cleanup keeps unresolved partial payments and missing success confirmation
   await mf.dispatchFetch(origin+'/__test_cron');
   assert.equal((await db.prepare('SELECT status FROM orders WHERE ref=?').bind(partial.row.ref).first()).status,'underpaid');
   assert.equal((await db.prepare('SELECT payment_code FROM orders WHERE ref=?').bind(waiting.row.ref).first()).payment_code,'awaiting_webhook');
-  assert.equal(await db.prepare('SELECT status FROM orders WHERE ref=?').bind(unpaid.row.ref).first(),null);
+  assert.equal((await db.prepare('SELECT status FROM orders WHERE ref=?').bind(unpaid.row.ref).first()).status,'pending');
 });
 
 test('The server refuses sandbox links for live orders and resumes a sandbox order with its saved test mode',async()=>{
