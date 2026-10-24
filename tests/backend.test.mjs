@@ -343,3 +343,13 @@ test('Contact-form messages reach support and Reply goes to the customer, while 
  assert.equal(message.body.reply_to,'visitor@example.com');
  const receipt=emails.find(m=>m.idempotency.startsWith('receipt/'));if(receipt)assert.notEqual(receipt.body.reply_to,'visitor@example.com');
 });
+
+test('The Orders list says whether each live purchase was reported to Meta',async()=>{
+ const stamp=Math.floor(Date.now()/1000),make=(ref,metaData)=>db.prepare("INSERT INTO orders(ref,key_hash,key_enc,name,email,amount,currency,items,status,mode,created_at,paid_at,meta_user_data) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(ref,'h','e','Meta Check','metacheck@example.com',10,'ZMW','[]','paid','live',stamp,stamp,metaData).run();
+ await make('BS-metacheck-none',null);await make('BS-metacheck-sent','x');await make('BS-metacheck-wait','x');await make('BS-metacheck-lost','x');
+ await db.prepare('INSERT INTO meta_events(id,pixel_id,payload,created_at,next_attempt_at,sent_at) VALUES(?,?,?,?,?,?)').bind('purchase-BS-metacheck-sent','12345','p',stamp,stamp,stamp).run();
+ await db.prepare('INSERT INTO meta_events(id,pixel_id,payload,created_at,next_attempt_at) VALUES(?,?,?,?,?)').bind('purchase-BS-metacheck-wait','12345','p',stamp,stamp).run();
+ const list=(await api('admin/sales?search=metacheck%40example.com',{auth:true})).data.orders,state=ref=>list.find(o=>o.ref===ref).meta_purchase;
+ assert.equal(state('BS-metacheck-none'),'no_permission');assert.equal(state('BS-metacheck-sent'),'sent');assert.equal(state('BS-metacheck-wait'),'waiting');assert.equal(state('BS-metacheck-lost'),'not_queued');
+ await db.prepare("DELETE FROM meta_events WHERE id LIKE 'purchase-BS-metacheck-%'").run();await db.prepare("DELETE FROM orders WHERE ref LIKE 'BS-metacheck-%'").run();
+});
