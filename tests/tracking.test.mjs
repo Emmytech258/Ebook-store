@@ -90,3 +90,30 @@ test('A private purchase page sends no purchase tracking without consent',()=>{
  p.tracking.track('Purchase',{value:1,currency:'NGN',content_ids:['a-book']},'purchase-PRIVATE');
  assert.equal(p.document.querySelector('iframe'),null);
 });
+
+test('Outside the UK, EEA and Switzerland tracking is on by default and the visitor can turn it off',()=>{
+ for(const country of ['ZM','NG','KE','GH']){
+  const p=browser('/books/a-book/','?fbclid=approved-ad-click',null);
+  p.tracking.init('1234567890','live','book',{nonce:'n',conversions_api_enabled:true,country});
+  assert.equal(p.tracking.optIn(),false);assert.equal(p.tracking.defaultOn(),true);assert.equal(p.tracking.needsChoice(),false);assert.equal(p.tracking.consented(),true);
+  assert.equal(p.window.fbq.queue.filter(a=>a[0]==='track'&&a[1]==='PageView').length,1);
+ }
+ const p=browser('/books/a-book/','',null);p.tracking.init('1234567890','live','book',{nonce:'n',conversions_api_enabled:true,country:'ZM'});
+ p.tracking.resetChoice();assert.equal(p.tracking.needsChoice(),true);assert.equal(p.tracking.consented(),true);
+ const before=p.requests.length;p.tracking.setConsent(false);assert.equal(p.tracking.needsChoice(),false);assert.equal(p.tracking.consented(),false);p.tracking.track('AddToCart',{content_ids:['a-book']});assert.equal(p.requests.length,before);
+ const returning=browser('/books/a-book/','','no');returning.tracking.init('1234567890','live','book',{nonce:'n',conversions_api_enabled:true,country:'ZM'});
+ assert.equal(returning.tracking.consented(),false);assert.equal(returning.window.fbq,undefined);assert.equal(returning.requests.length,0);
+});
+test('Visitors in the UK, EEA, Switzerland or an unknown country are asked first and nothing is sent before they say yes',()=>{
+ for(const country of ['GB','DE','FR','CH','NO','OT','','XX']){
+  const p=browser('/books/a-book/','?fbclid=approved-ad-click',null);
+  p.tracking.init('1234567890','live','book',{nonce:'n',conversions_api_enabled:true,country});
+  assert.equal(p.tracking.optIn(),true,country);assert.equal(p.tracking.needsChoice(),true,country);assert.equal(p.tracking.consented(),false,country);assert.equal(p.window.fbq,undefined,country);assert.equal(p.requests.length,0,country);assert.equal(p.jar.size,0,country);
+ }
+});
+test('Purchase tracking on the private page runs by default only where tracking is on by default',()=>{
+ const on=browser('/books/download/','?ref=PRIVATE-REFERENCE&k=PRIVATE-KEY',null);on.tracking.init('1234567890','live','download',{nonce:'n',conversions_api_enabled:true,country:'ZM'});
+ on.tracking.track('Purchase',{value:1,currency:'ZMW',content_ids:['a-book']},'purchase-PRIVATE');assert.ok(on.document.querySelector('iframe'));
+ const ask=browser('/books/download/','?ref=PRIVATE-REFERENCE&k=PRIVATE-KEY',null);ask.tracking.init('1234567890','live','download',{nonce:'n',conversions_api_enabled:true,country:'GB'});
+ ask.tracking.track('Purchase',{value:1,currency:'GBP',content_ids:['a-book']},'purchase-PRIVATE');assert.equal(ask.document.querySelector('iframe'),null);
+});

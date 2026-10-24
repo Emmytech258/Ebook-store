@@ -300,7 +300,7 @@ test('Policy pages carry the owner-approved additions and the homepage uses the 
 test('Checkout offers one optional, unticked Meta box and only a ticked box (or an earlier yes) allows Meta reporting',async()=>{
  for(const [ticked,earlierYes,expected] of [[false,false,false],[true,false,true],[false,true,true]]){
   let consent=earlierYes;const calls=[];
-  const p=await page({page:'checkout',tracking:{available:()=>true,consented:()=>consent,setConsent:yes=>{consent=yes;calls.push(yes);return true;},context:()=>({})}},[SEED_BOOKS[0].id]);
+  const p=await page({page:'checkout',tracking:{available:()=>true,optIn:()=>true,consented:()=>consent,setConsent:yes=>{consent=yes;calls.push(yes);return true;},context:()=>({})}},[SEED_BOOKS[0].id]);
   const form=p.document.getElementById('bs-checkout-form'),box=form.querySelector('[name=meta_share]');
   assert.ok(box);assert.equal(box.hasAttribute('required'),false);assert.equal(box.hasAttribute('checked'),earlierYes);assert.match(form.textContent,/hashed email, IP address and browser details/);
   form.querySelector('[name=name]').value='Customer Name';form.querySelector('[name=email]').value='buyer@example.com';form.querySelector('[name=consent]').checked=true;box.checked=ticked||earlierYes;

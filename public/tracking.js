@@ -1,8 +1,12 @@
 (function(){
   let pixel='',mode='setup',privatePage=false,frame=null,nonce='',serverEnabled=false,started=false;
+  let country='',reviewing=false;
+  // Visitors in these places are asked first. Everyone else is measured by default and can switch it off.
+  const askFirst=new Set('AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO GB CH'.split(' '));
+  const optIn=()=>!/^[A-Z]{2}$/.test(country)||country==='OT'||country==='XX'||askFirst.has(country);
   const consentKey='bs-tracking-consent';
   const choice=()=>{try{return window.localStorage.getItem(consentKey);}catch{return null;}};
-  const allowed=()=>choice()==='yes';
+  const allowed=()=>{const saved=choice();return saved==='yes'||(saved===null&&!optIn());};
   const uid=()=>window.crypto?.randomUUID?.()||'event-'+Date.now()+'-'+Math.random().toString(36).slice(2);
   const cookie=name=>document.cookie.split(';').map(s=>s.trim()).find(s=>s.startsWith(name+'='))?.slice(name.length+1)||'';
   function context(){return {fbp:cookie('_fbp'),fbc:cookie('_fbc')};}
@@ -22,7 +26,7 @@
   };
   window.BSTracking={
     init(id,paymentMode,page,options={}){
-      pixel=/^\d{5,30}$/.test(String(id))?String(id):'';mode=paymentMode;privatePage=page==='download';nonce=options.nonce||'';serverEnabled=Boolean(options.conversions_api_enabled);
+      pixel=/^\d{5,30}$/.test(String(id))?String(id):'';mode=paymentMode;privatePage=page==='download';nonce=options.nonce||'';serverEnabled=Boolean(options.conversions_api_enabled);country=String(options.country||'');
       if(!pixel||mode!=='live'||privatePage)return;
       if(allowed())this.start();
     },
@@ -30,12 +34,14 @@
       if(started||!pixel||mode!=='live'||privatePage||!allowed())return;
       started=true;attributionCookies();this.track('PageView',{});
     },
-    // The visitor must say yes before any Meta script, cookie or server event is used.
+    // Visitors who must be asked say yes first. Elsewhere tracking is on until the visitor turns it off.
     available(){return Boolean(pixel)&&mode==='live'&&!privatePage;},
-    needsChoice(){return this.available()&&choice()===null;},
+    needsChoice(){return this.available()&&(reviewing||(choice()===null&&optIn()));},
+    optIn(){return optIn();},
+    defaultOn(){return this.available()&&!optIn();},
     consented(){return allowed();},
-    setConsent(yes){try{window.localStorage.setItem(consentKey,yes?'yes':'no');}catch{return false;}if(yes)this.start();return true;},
-    resetChoice(){try{window.localStorage.removeItem(consentKey);}catch{}},
+    setConsent(yes){try{window.localStorage.setItem(consentKey,yes?'yes':'no');}catch{return false;}reviewing=false;if(yes)this.start();return true;},
+    resetChoice(){if(!optIn()){reviewing=true;return;}try{window.localStorage.removeItem(consentKey);}catch{}},
     track(event,data,eventId){
       if(!pixel||mode!=='live'||!allowed())return;
       eventId=eventId||uid();
