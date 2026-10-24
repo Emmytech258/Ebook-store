@@ -296,3 +296,16 @@ test('Policy pages carry the owner-approved additions and the homepage uses the 
  assert.match(privacy,/Resend.*Cloudflare/);assert.match(privacy,/correct or delete your details/);
  const home=await page();assert.equal(home.document.querySelector('.bs-kicker').textContent.includes('Practical books'),false);
 });
+
+test('Checkout offers one optional, unticked Meta box and only a ticked box (or an earlier yes) allows Meta reporting',async()=>{
+ for(const [ticked,earlierYes,expected] of [[false,false,false],[true,false,true],[false,true,true]]){
+  let consent=earlierYes;const calls=[];
+  const p=await page({page:'checkout',tracking:{available:()=>true,consented:()=>consent,setConsent:yes=>{consent=yes;calls.push(yes);return true;},context:()=>({})}},[SEED_BOOKS[0].id]);
+  const form=p.document.getElementById('bs-checkout-form'),box=form.querySelector('[name=meta_share]');
+  assert.ok(box);assert.equal(box.hasAttribute('required'),false);assert.equal(box.hasAttribute('checked'),earlierYes);assert.match(form.textContent,/hashed email, IP address and browser details/);
+  form.querySelector('[name=name]').value='Customer Name';form.querySelector('[name=email]').value='buyer@example.com';form.querySelector('[name=consent]').checked=true;box.checked=ticked||earlierYes;
+  form.dispatchEvent(new p.window.Event('submit',{bubbles:true,cancelable:true}));await tick();
+  const data=JSON.parse(p.requests.find(r=>r.url.endsWith('/checkout')).options.body);
+  assert.equal(data.meta_consent,expected);assert.equal(data.meta_share,undefined);assert.equal(calls.includes(true),ticked||earlierYes);
+ }
+});
