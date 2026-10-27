@@ -147,7 +147,7 @@ test('Optional method metadata never replaces the required Bachs money and ident
       [{charge:{...verified.charge,amount:'50.38'}},'underpaid'],[{charge:{...verified.charge,amount:null}},'amount_mismatch'],
       [{status:'open'},'not_successful'],[{payment_status:'processing'},'not_successful'],
       [{charge:{...verified.charge,payment_id:null}},'transaction_invalid'],
-      [{charge:{...verified.charge,status:'failed'}},'failed'],[{charge:{...verified.charge,status:'accepted'}},'needs_review']
+      [{charge:{...verified.charge,status:'failed'}},'failed']
     ];
     for(const [change,code] of invalid)assert.equal(bachsPaymentIssue(saved,{...session,...change}),code,JSON.stringify(change));
   }
@@ -164,12 +164,16 @@ test('Full Bachs payments with missing or differently labelled methods still req
   }
 });
 
-test('An accepted Bachs charge cannot masquerade as full payment or prompt another full charge',async()=>{
- const o=await order(),value=complete(o);value.charge.status='accepted';await deliver(o,{type:'collection.succeeded'});
- const result=await verify(o);assert.equal(result.data.status,'review');assert.equal(result.data.books,undefined);assert.equal(result.data.resume_url,'');assert.deepEqual(result.data.retry_books,[]);
- assert.match(result.data.message,/Do not start another payment/);assert.equal((await db.prepare('SELECT status FROM orders WHERE ref=?').bind(o.row.ref).first()).status,'review');
- value.charge.status='failed';value.payment_status='failed';await deliver(o,{type:'collection.failed'});assert.equal((await verify(o)).data.status,'review');
- value.charge.status='succeeded';value.payment_status='succeeded';await deliver(o);assert.equal((await verify(o)).data.status,'paid');
+test('A fully paid or overpaid ACCEPTED Bachs charge is paid only with the signed success event, and a held order is released',async()=>{
+ const o=await order(),value=complete(o);value.charge.status='accepted';value.charge.amount=(o.amount+11.9).toFixed(2);
+ assert.notEqual((await verify(o)).data.status,'paid');
+ await deliver(o,{type:'collection.succeeded'});
+ const result=await verify(o);assert.equal(result.data.status,'paid');assert.ok(result.data.books.length>0);
+ const held=await order(),second=complete(held);second.charge.status='accepted';await deliver(held,{type:'collection.succeeded'});
+ await db.prepare("UPDATE orders SET status='review',payment_code='needs_review' WHERE ref=?").bind(held.row.ref).run();
+ assert.equal((await verify(held)).data.status,'paid');
+ const short=await order(),third=complete(short);third.charge.status='accepted';third.charge.amount=(short.amount-.01).toFixed(2);await deliver(short);
+ const partial=await verify(short);assert.equal(partial.data.status,'underpaid');assert.equal(partial.data.books,undefined);
 });
 test('Webhook processing returns an error during provider outages and succeeds on a safe redelivery',async()=>{
   const o=await order();complete(o);readFails=true;

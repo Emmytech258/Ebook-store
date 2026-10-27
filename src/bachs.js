@@ -50,8 +50,7 @@ export function bachsPaymentIssue(order,session){
   if(!identifier(session.charge?.payment_id))return 'transaction_invalid';
   if(!['succeeded','accepted','overpaid'].includes(charge))return 'not_successful';
   const received=minorUnits(session.charge.amount),expected=minorUnits(order.amount);if(received===null)return 'amount_mismatch';if(received<expected)return 'underpaid';
-  // ACCEPTED may describe a partial amount accepted by the provider, not full collection.
-  if(charge==='accepted')return 'needs_review';
+  // Bachs documents SUCCEEDED, ACCEPTED and OVERPAID as successful charge states. A short amount returned 'underpaid' above.
   return 'paid';
 }
 export async function readBachsConfirmation(env,order){
