@@ -31,7 +31,7 @@ export async function checkout(env,req,data) {
   const detected=req.cf?.country,country=/^[A-Z]{2}$/.test(detected||'')&&detected!=='OT'?detected:/^[A-Z]{2}$/.test(String(data.country))?data.country:'OT';
   const enabled=JSON.parse(s.currencies||'["NGN"]');
   assert(data.currency==null||typeof data.currency==='string'&&ALL_CURRENCIES.includes(data.currency)&&enabled.includes(data.currency),400,'Choose an available currency at the top of the page.');
-  const currency=data.currency||automaticCurrency(country,s),provider=paymentProvider(currency);
+  const currency=data.currency||automaticCurrency(country,s),provider=paymentProvider(currency,s);
   assert(providerReady(s,provider),503,'Payment in this currency is temporarily unavailable. Please choose another currency.');
   const fx=await rates(env),items=[];
   for(const id of ids){const row=await env.DB.prepare('SELECT * FROM books WHERE id=? AND active=1').bind(id).first();assert(row&&row.pdf_key,409,'A book in your cart is not ready for purchase.');const amount=bookPrices(row.price_ngn,fx,s)[currency];assert(amount>0,409,'We could not load this currency price. Please try again later or contact support.');assert(await env.FILES.head(row.pdf_key),409,'A book in your cart is not ready for purchase.');items.push({id:row.id,title:JSON.parse(row.data).title,amount,pdf_key:row.pdf_key});}

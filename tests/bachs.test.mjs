@@ -31,7 +31,7 @@ async function external(req){
     assert.equal(req.headers.get('Authorization'),'Bearer '+(mode==='test'?'sk_sandbox_test_key_value':'sk_live_test_key_value'));
     if(u.pathname==='/v1/checkout-sessions'&&req.method==='POST'){
       const body=await req.json(),id='chk_'+(++sequence);starts.push({provider:'bachs',mode,body,idempotency:req.headers.get('Idempotency-Key')});
-      sessions.set(id,{checkout_id:id,status:'open',payment_status:'requires_payment_method',amount:body.pricing.amount,currency:body.pricing.currency,billing_currency:body.billing_currency,reference:body.reference,payment_method:body.payment_method_types[0],charge:null,mode,body});
+      sessions.set(id,{checkout_id:id,status:'open',payment_status:'requires_payment_method',amount:body.pricing.amount,currency:body.pricing.currency,billing_currency:body.billing_currency,reference:body.reference,payment_method:body.payment_method_types?.[0],charge:null,mode,body});
       if(createResponseLost)return reply({detail:'Interrupted response'},503);
       return reply({checkout_id:id,checkout_url:linkOverride||'https://'+(mode==='test'?'sandbox-checkout.bachs.io':'checkout.bachs.io')+'/c/token_'+sequence,status:'open',reference:body.reference},201);
     }
@@ -406,4 +406,17 @@ test('The clean-up migration removes test and old unpaid orders but keeps paid l
   assert.equal((await db.prepare("SELECT COUNT(*) n FROM downloads WHERE order_ref='BS-clean-test-paid'").first()).n,0);
   assert.equal((await db.prepare('SELECT COALESCE(SUM(count),0) n FROM book_purchase_counts').first()).n,before.n);
   await db.prepare("DELETE FROM orders WHERE ref LIKE 'BS-clean-%'").run();
+});
+
+test('The naira switch sends naira to Bachs or Flutterwave, keeps started orders with their own company, and needs Bachs keys',async()=>{
+  const flw=await order('NGN');assert.equal(flw.row.provider,'flutterwave');
+  assert.equal((await api('admin/settings',{method:'POST',auth:true,data:{ngn_provider:'stripe'}})).response.status,400);
+  assert.equal((await api('admin/settings',{method:'POST',auth:true,data:{ngn_provider:'bachs'}})).response.status,200);
+  assert.equal((await api('admin/settings',{auth:true})).data.ngn_provider,'bachs');
+  const viaBachs=await order('NGN');assert.equal(viaBachs.response.status,200,JSON.stringify(viaBachs.data));const request=starts.at(-1);
+  assert.equal(viaBachs.row.provider,'bachs');assert.equal(viaBachs.row.currency,'NGN');assert.equal(request.provider,'bachs');assert.equal(request.body.pricing.currency,'NGN');assert.equal(Number(request.body.pricing.amount),viaBachs.amount);assert.equal(request.body.billing_currency,'NGN');
+  assert.equal(request.body.payment_method_types,undefined);assert.equal(request.body.reference,viaBachs.row.ref);assert.equal(new URL(viaBachs.data.checkout_url).hostname,'sandbox-checkout.bachs.io');
+  assert.equal((await verify(flw)).data.provider,'flutterwave');
+  assert.equal((await api('admin/settings',{method:'POST',auth:true,data:{ngn_provider:'flutterwave'}})).response.status,200);
+  const back=await order('NGN');assert.equal(back.row.provider,'flutterwave');assert.equal(starts.at(-1).provider,'flutterwave');
 });

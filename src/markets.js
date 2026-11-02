@@ -3,7 +3,7 @@ export const SHOP_CURRENCIES=['NGN',...MOBILE_CURRENCIES];
 export const ALL_CURRENCIES=[...SHOP_CURRENCIES,'USD'];
 export const COUNTRY_CURRENCIES={NG:'NGN',GH:'GHS',KE:'KES',MW:'MWK',RW:'RWF',TZ:'TZS',UG:'UGX',ZM:'ZMW',CM:'XAF',CF:'XAF',CG:'XAF',GA:'XAF',GQ:'XAF',TD:'XAF',BJ:'XOF',BF:'XOF',CI:'XOF',GW:'XOF',ML:'XOF',NE:'XOF',SN:'XOF',TG:'XOF'};
 export const currencyFor=country=>COUNTRY_CURRENCIES[country]||'USD';
-export const paymentProvider=currency=>currency==='NGN'?'flutterwave':'bachs';
+export const paymentProvider=(currency,s={})=>currency==='NGN'?(s.ngn_provider==='bachs'?'bachs':'flutterwave'):'bachs';
 export const corridorFor=currency=>currency==='USD'?'USD_CARD':MOBILE_CURRENCIES.includes(currency)?'MOMO_'+currency:null;
 export const currencyDecimals=currency=>['NGN','GHS','ZMW','USD'].includes(currency)?2:0;
 export function configuredCurrencies(s){
@@ -16,7 +16,7 @@ export function providerReady(s,provider,mode=s.mode){
 }
 export function activeCurrencies(s){
   const configured=configuredCurrencies(s);
-  return configured.filter(c=>providerReady(s,paymentProvider(c)));
+  return configured.filter(c=>providerReady(s,paymentProvider(c,s)));
 }
 // Compare major-unit decimal strings as integer minor units. No float rounding can
 // turn an underpayment into a full payment.
