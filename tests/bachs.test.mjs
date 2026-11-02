@@ -415,7 +415,7 @@ test('The naira switch sends naira to Bachs or Flutterwave, keeps started orders
   assert.equal((await api('admin/settings',{auth:true})).data.ngn_provider,'bachs');
   const viaBachs=await order('NGN');assert.equal(viaBachs.response.status,200,JSON.stringify(viaBachs.data));const request=starts.at(-1);
   assert.equal(viaBachs.row.provider,'bachs');assert.equal(viaBachs.row.currency,'NGN');assert.equal(request.provider,'bachs');assert.equal(request.body.pricing.currency,'NGN');assert.equal(Number(request.body.pricing.amount),viaBachs.amount);assert.equal(request.body.billing_currency,'NGN');
-  assert.equal(request.body.payment_method_types,undefined);assert.equal(request.body.reference,viaBachs.row.ref);assert.equal(new URL(viaBachs.data.checkout_url).hostname,'sandbox-checkout.bachs.io');
+  assert.equal(request.body.payment_method_types,undefined);assert.deepEqual(request.body.allowed_payment_method_types,['bank_transfer','card']);assert.equal(request.body.reference,viaBachs.row.ref);assert.equal(new URL(viaBachs.data.checkout_url).hostname,'sandbox-checkout.bachs.io');
   assert.equal((await verify(flw)).data.provider,'flutterwave');
   assert.equal((await api('admin/settings',{method:'POST',auth:true,data:{ngn_provider:'flutterwave'}})).response.status,200);
   const back=await order('NGN');assert.equal(back.row.provider,'flutterwave');assert.equal(starts.at(-1).provider,'flutterwave');
