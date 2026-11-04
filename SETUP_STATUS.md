@@ -25,3 +25,4 @@ Last updated: 2026-10-21
 - The From/To date filter now counts a day as midnight to midnight Lagos time.
 - Stored times are unchanged (still UTC seconds); only the display changed. Evidence: npm run check, npm test (123 passing) and npm run build pass. Not yet checked on the live portal.
 - Not changed: the exchange-rate note still says prices update at midnight and noon UTC (that is the real schedule).
+- Owner asked for a 12-hour clock. Portal and CSV times now show like "04/11/2026, 10:05:38 pm" (Lagos time). Checks and tests pass (123).
