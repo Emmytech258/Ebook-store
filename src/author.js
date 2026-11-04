@@ -174,7 +174,7 @@ export async function authorApi(env,req,path) {
 async function sales(env,req,exporting=false) {
   const q=new URL(req.url).searchParams,where=[],args=[];
   const status=q.get('status');if(['paid','pending','failed','underpaid','review','expired','cancelled','setup_failed'].includes(status)){where.push('status=?');args.push(status);}
-  for(const key of ['from','to'])if(/^\d{4}-\d{2}-\d{2}$/.test(q.get(key)||'')){const t=Date.parse(q.get(key)+'T00:00:00Z')/1000;if(Number.isFinite(t)){where.push('created_at'+(key==='from'?'>=?':'<?'));args.push(t+(key==='to'?86400:0));}}
+  for(const key of ['from','to'])if(/^\d{4}-\d{2}-\d{2}$/.test(q.get(key)||'')){const t=Date.parse(q.get(key)+'T00:00:00+01:00')/1000;if(Number.isFinite(t)){where.push('created_at'+(key==='from'?'>=?':'<?'));args.push(t+(key==='to'?86400:0));}}
   const search=String(q.get('search')||'').trim().slice(0,200);if(search){where.push('(name LIKE ? OR email LIKE ? OR ref LIKE ?)');args.push('%'+search+'%','%'+search+'%','%'+search+'%');}
   const clause=where.length?' WHERE '+where.join(' AND '):'',page=Math.max(1,Math.min(100000,Number(q.get('page'))||1));
   const {results}=await env.DB.prepare('SELECT * FROM orders'+clause+' ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(...args,exporting?10000:50,exporting?0:(page-1)*50).all();
@@ -184,8 +184,8 @@ async function sales(env,req,exporting=false) {
   const metaFor=row=>row.status!=='paid'||row.mode!=='live'?'':!row.meta_user_data?'no_permission':metaState.get('purchase-'+row.ref)||'not_queued';
   const rows=results.map(row=>({meta_purchase:metaFor(row),ref:row.ref,name:row.name,email:row.email,phone:row.phone,country:row.country,amount:row.amount,currency:row.currency,status:row.status,payment_code:row.payment_code,payment_message:row.payment_code?confirmationMessage(row.payment_code,row.provider):'',last_check_at:row.last_check_at,mode:row.mode,provider:row.provider||'flutterwave',created_at:row.created_at,paid_at:row.paid_at,email_sent_at:row.email_sent_at,reminder_sent_at:row.reminder_sent_at,mail_error:row.mail_error,books:JSON.parse(row.items).map(i=>i.title)}));
   if(!exporting){const totals=await env.DB.prepare('SELECT count(*) AS count FROM orders'+clause).bind(...args).first();const {results:summary}=await env.DB.prepare("SELECT currency,SUM(amount) AS amount,COUNT(*) AS orders FROM orders WHERE status='paid' AND mode='live' GROUP BY currency").all();return json({orders:rows,page,total:totals.count,summary});}
-  const lines=[['Reference','Buyer name','Email','Phone','Country','Books','Amount','Currency','Status','Mode','Payment provider','Date and time (UTC)','Paid date and time (UTC)','Payment detail','Last checked (UTC)']];
-  const date=value=>value?new Date(value*1000).toLocaleString('en-GB',{timeZone:'UTC',hour12:false}):'';
+  const lines=[['Reference','Buyer name','Email','Phone','Country','Books','Amount','Currency','Status','Mode','Payment provider','Date and time (Nigeria, WAT)','Paid date and time (Nigeria, WAT)','Payment detail','Last checked (Nigeria, WAT)']];
+  const date=value=>value?new Date(value*1000).toLocaleString('en-GB',{timeZone:'Africa/Lagos',hour12:false}):'';
   for(const row of rows)lines.push([row.ref,row.name,row.email,row.phone,row.country,row.books.join('; '),row.amount,row.currency,row.status,row.mode,row.provider,date(row.created_at),date(row.paid_at),row.payment_message,date(row.last_check_at)]);
   return new Response('\ufeff'+lines.map(line=>line.map(csvCell).join(',')).join('\r\n'),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="Revival-Fire-Forum-sales.csv"','Cache-Control':'private, no-store'}});
 }

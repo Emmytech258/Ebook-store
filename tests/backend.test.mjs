@@ -163,7 +163,7 @@ test('Webhook rejects a false secret; sales filter/export are private and protec
  assert.equal((await api('webhook',{method:'POST',data:{data:{tx_ref:purchased.ref,id:123}},headers:{'verif-hash':'test-webhook-secret-value'}})).response.status,200);
  assert.equal((await api('admin/sales')).response.status,401);
  const hostile=await makeOrder([books[1].id],'=SUM(1,2)');paid(hostile);assert.equal((await verify(hostile)).data.status,'paid');const sales=(await api('admin/sales?status=paid&search=buyer%40example.com',{auth:true})).data;assert.ok(sales.orders.length>=3);assert.equal(sales.orders[0].key_enc,undefined);assert.equal(sales.orders[0].items,undefined);
- const exported=await call('/books/api/admin/export?search=SUM',{auth:true});assert.equal(exported.status,200);const csv=await exported.text();assert.match(csv,/"'=SUM\(1,2\)"/);assert.match(csv,/UTC/);
+ const exported=await call('/books/api/admin/export?search=SUM',{auth:true});assert.equal(exported.status,200);const csv=await exported.text();assert.match(csv,/"'=SUM\(1,2\)"/);assert.match(csv,/Nigeria, WAT/);
 });
 
 test('Conversions API token stays encrypted and private, test events need a saved code, and text styles validate',async()=>{
