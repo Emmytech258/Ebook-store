@@ -420,3 +420,24 @@ test('The naira switch sends naira to Bachs or Flutterwave, keeps started orders
   assert.equal((await api('admin/settings',{method:'POST',auth:true,data:{ngn_provider:'flutterwave'}})).response.status,200);
   const back=await order('NGN');assert.equal(back.row.provider,'flutterwave');assert.equal(starts.at(-1).provider,'flutterwave');
 });
+test('A card paid in another currency counts only when Bachs states the full amount it settles in the order currency',async()=>{
+  const usd=(o,extra={})=>complete(o,{charge:{payment_id:'pay_usd_'+o.row.ref,status:'succeeded',amount:'2.98',currency:'USD'}});
+  const settle=(o,changes)=>deliver(o,{type:'collection.succeeded',changes:{reference:o.row.ref,status:'SUCCEEDED',amount:'2.98',currency:'USD',...changes}});
+  const none=await order();usd(none);await deliver(none,{type:'collection.succeeded'});
+  assert.notEqual((await verify(none)).data.status,'paid');
+  const short=await order();usd(short);await settle(short,{settlement_amount:(short.amount-1).toFixed(2),settlement_currency:'GHS'});
+  assert.equal((await verify(short)).data.status,'underpaid');
+  const wrong=await order();usd(wrong);await settle(wrong,{settlement_amount:wrong.amount.toFixed(2),settlement_currency:'KES'});
+  assert.notEqual((await verify(wrong)).data.status,'paid');
+  const other=await order();usd(other);await settle(other,{reference:'BS-someone-else',settlement_amount:other.amount.toFixed(2),settlement_currency:'GHS'});
+  assert.notEqual((await verify(other)).data.status,'paid');
+  const full=await order();usd(full);await settle(full,{settlement_amount:full.amount.toFixed(2),settlement_currency:'GHS'});
+  const result=await verify(full);assert.equal(result.data.status,'paid');assert.ok(result.data.books.length>0);
+  const late=await order();usd(late);await settle(late,{settlement_amount:late.amount.toFixed(2),settlement_currency:'GHS'});
+  await db.prepare('UPDATE bachs_webhook_events SET settlement_amount=NULL,settlement_currency=NULL WHERE order_ref=?').bind(late.row.ref).run();
+  await db.prepare("UPDATE orders SET status='failed',payment_code='currency_mismatch',paid_at=NULL WHERE ref=?").bind(late.row.ref).run();
+  assert.notEqual((await verify(late)).data.status,'paid');
+  const id=(await db.prepare('SELECT event_id FROM bachs_webhook_events WHERE order_ref=?').bind(late.row.ref).first()).event_id;
+  await deliver(late,{type:'collection.succeeded',id,timestamp:Math.floor(Date.now()/1000),changes:{reference:late.row.ref,status:'SUCCEEDED',amount:'2.98',currency:'USD',settlement_amount:late.amount.toFixed(2),settlement_currency:'GHS'}});
+  assert.equal((await verify(late)).data.status,'paid');
+});

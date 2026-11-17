@@ -26,3 +26,10 @@ Last updated: 2026-10-21
 - Stored times are unchanged (still UTC seconds); only the display changed. Evidence: npm run check, npm test (123 passing) and npm run build pass. Not yet checked on the live portal.
 - Not changed: the exchange-rate note still says prices update at midnight and noon UTC (that is the real schedule).
 - Owner asked for a 12-hour clock. Portal and CSV times now show like "04/11/2026, 10:05:38 pm" (Lagos time). Checks and tests pass (123).
+
+## Card paid in another currency (2026-11-17)
+- Found: a live naira order (NGN 3,500) via Bachs was paid by card in USD (USD 2.98). Bachs settled NGN 3,500.00 to the owner (signed collection.succeeded event: amount 2.98 USD, settlement_amount 3500.00 NGN, fee 0.52 USD paid by customer). The store held the order as failed ("verified payment currency does not match") and sent no book.
+- Fix: a charge in a different currency now counts only when Bachs states, in the signed success event for the same checkout and order reference (or on the charge itself), a settlement in the order currency that is at least the order amount. Without it the order stays held; a short settlement is underpaid. Migration 0010 adds settlement_amount and settlement_currency to bachs_webhook_events.
+- A webhook Bachs resends (same event id and payload) fills in the missing settlement, so an order held earlier is released by Check payment.
+- Evidence: npm run check, npm test (124 passing, new test covers none/short/wrong currency/other order/full/resend) and build pass. Not yet proven on the live order: owner must resend the Bachs event evt_02ed036e... and press Check payment, then resend the receipt.
+- Note: USD is already a store currency (visitors outside the nine countries pay USD by card).

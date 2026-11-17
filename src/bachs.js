@@ -33,10 +33,18 @@ function sessionIssue(order,session){
   if(expected===null||paid===null||expected!==paid)return 'amount_mismatch';
   return '';
 }
-export function bachsPaymentIssue(order,session){
+// A buyer can pay by card in another currency (for example dollars for a naira order).
+// That charge counts only when Bachs states the amount it settles to us in the order currency.
+function settledAmount(order,charge,stored){
+  for(const item of [stored,{amount:charge?.settlement_amount,currency:charge?.settlement_currency}]){
+    if(item&&item.currency===order.currency&&minorUnits(item.amount)!==null)return item.amount;
+  }
+  return null;
+}
+export function bachsPaymentIssue(order,session,stored){
   const identity=sessionIssue(order,session);if(identity)return identity;
   const status=String(session.status||'').toLowerCase(),payment=String(session.payment_status||'').toLowerCase(),charge=String(session.charge?.status||'').toLowerCase();
-  if(session.charge&&session.charge.currency!==order.currency)return 'currency_mismatch';
+  const foreign=Boolean(session.charge)&&session.charge.currency!==order.currency,settled=foreign?settledAmount(order,session.charge,stored):null;
   // The selected method is optional provider metadata. Checkout creation already
   // restricts the allowed methods; fulfilment requires the verified money below
   // and the signed, matching success event in readBachsConfirmation.
@@ -49,7 +57,8 @@ export function bachsPaymentIssue(order,session){
   if(status!=='completed'||payment!=='succeeded')return 'not_successful';
   if(!identifier(session.charge?.payment_id))return 'transaction_invalid';
   if(!['succeeded','accepted','overpaid'].includes(charge))return 'not_successful';
-  const received=minorUnits(session.charge.amount),expected=minorUnits(order.amount);if(received===null)return 'amount_mismatch';if(received<expected)return 'underpaid';
+  if(foreign&&settled===null)return 'currency_mismatch';
+  const received=minorUnits(foreign?settled:session.charge.amount),expected=minorUnits(order.amount);if(received===null)return 'amount_mismatch';if(received<expected)return 'underpaid';
   // Bachs documents SUCCEEDED, ACCEPTED and OVERPAID as successful charge states. A short amount returned 'underpaid' above.
   return 'paid';
 }
@@ -58,9 +67,9 @@ export async function readBachsConfirmation(env,order){
   const {response,data}=await bachs(env,await settings(env),'checkout-sessions/'+encodeURIComponent(order.provider_session),'GET',undefined,order.mode);
   if(!response.ok&&response.status!==404)throw new Error('Payment confirmation is temporarily unavailable.');
   if(!response.ok)return {code:'not_found'};
-  const code=bachsPaymentIssue(order,data),result={code,checkout_open:!sessionIssue(order,data)&&String(data.status).toLowerCase()==='open',provider_status:String(data.payment_status||data.status||'').slice(0,40),amount:Number.isFinite(Number(data.amount))?Number(data.amount):null,currency:String(data.currency||'').slice(0,8)};
+  const proof=await env.DB.prepare("SELECT event_id,settlement_amount,settlement_currency FROM bachs_webhook_events WHERE order_ref=? AND mode=? AND checkout_id=? AND event_type IN ('checkout.completed','collection.succeeded') ORDER BY settlement_currency IS NULL LIMIT 1").bind(order.ref,order.mode,order.provider_session).first();
+  const code=bachsPaymentIssue(order,data,proof&&{amount:proof.settlement_amount,currency:proof.settlement_currency}),result={code,checkout_open:!sessionIssue(order,data)&&String(data.status).toLowerCase()==='open',provider_status:String(data.payment_status||data.status||'').slice(0,40),amount:Number.isFinite(Number(data.amount))?Number(data.amount):null,currency:String(data.currency||'').slice(0,8)};
   if(code==='paid'){
-    const proof=await env.DB.prepare("SELECT event_id FROM bachs_webhook_events WHERE order_ref=? AND mode=? AND checkout_id=? AND event_type IN ('checkout.completed','collection.succeeded') LIMIT 1").bind(order.ref,order.mode,order.provider_session).first();
     if(proof)result.provider_id='bachs:'+data.charge.payment_id;else result.code='awaiting_webhook';
   }
   return result;
@@ -102,5 +111,8 @@ export async function receiveBachsWebhook(env,req,mode){
   const payloadHash=await digest(raw),existing=await env.DB.prepare('SELECT payload_hash FROM bachs_webhook_events WHERE event_id=? AND mode=?').bind(event.id,mode).first();
   assert(!existing||constantEqual(existing.payload_hash,payloadHash),400,'That event reference has already been used.');
   await env.DB.prepare('INSERT OR IGNORE INTO bachs_webhook_events(event_id,mode,checkout_id,order_ref,event_type,payload_hash,received_at) VALUES(?,?,?,?,?,?,?)').bind(event.id,mode,checkoutId,order.ref,event.type,payloadHash,now()).run();
+  // Bachs states what a card payment in another currency settles to in the order currency.
+  const d=event.data,settles=event.type==='collection.succeeded'&&(d.reference==null||d.reference===order.ref)&&typeof d.settlement_currency==='string'&&minorUnits(d.settlement_amount)!==null&&['succeeded','accepted','overpaid'].includes(String(d.status||'').toLowerCase());
+  if(settles)await env.DB.prepare('UPDATE bachs_webhook_events SET settlement_amount=?,settlement_currency=? WHERE event_id=? AND mode=? AND settlement_currency IS NULL').bind(String(d.settlement_amount),d.settlement_currency,event.id,mode).run();
   return order;
 }
