@@ -33,3 +33,4 @@ Last updated: 2026-10-21
 - A webhook Bachs resends (same event id and payload) fills in the missing settlement, so an order held earlier is released by Check payment.
 - Evidence: npm run check, npm test (124 passing, new test covers none/short/wrong currency/other order/full/resend) and build pass. Not yet proven on the live order: owner must resend the Bachs event evt_02ed036e... and press Check payment, then resend the receipt.
 - Note: USD is already a store currency (visitors outside the nine countries pay USD by card).
+- Deploy failure and fix (2026-11-17): the first two Cloudflare builds of the settlement change failed (32 s and 1 m 37 s) because migration 0010 had no semicolons, which Wrangler's migration step rejects. Tests missed it because the test harness loads migrations differently. Fixed with semicolons, `npm run check` now fails if any migration line lacks one, and all ten migrations were applied with the real `wrangler d1 migrations apply --local`.
